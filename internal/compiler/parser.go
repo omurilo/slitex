@@ -1,23 +1,38 @@
 package compiler
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Node interface{}
 
+type Section struct {
+	Title      string `json:"title"`
+	SlideIndex int    `json:"slideIndex"`
+}
+
 type Presentation struct {
-	Title  string  `json:"title"`
-	Author string  `json:"author"`
-	Date   string  `json:"date"`
-	Theme  string  `json:"theme"` // Novo campo para rastrear o tema escolhido
-	Frames []Frame `json:"frames"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	Institute string    `json:"institute,omitempty"`
+	Date      string    `json:"date,omitempty"`
+	Theme     string    `json:"theme"`
+	Sections  []Section `json:"sections"`
+	Frames    []Frame   `json:"frames"`
 }
 
 type Frame struct {
-	Title    string    `json:"title"`
-	Subtitle string    `json:"subtitle"`
-	Content  []Content `json:"content"`
+	Title     string    `json:"title"`
+	Subtitle  string    `json:"subtitle"`
+	Notes     string    `json:"notes"`
+	MaxSteps  int       `json:"maxSteps"`
+	Section   string    `json:"section,omitempty"`
+	TitlePage bool      `json:"titlePage,omitempty"`
+	Plain     bool      `json:"plain,omitempty"`
+	Content   []Content `json:"content"`
 }
 
 type ContentType string
@@ -29,6 +44,13 @@ const (
 	ContentColumns  ContentType = "columns"
 	ContentColumn   ContentType = "column"
 	ContentImage    ContentType = "image"
+	ContentVerbatim ContentType = "verbatim"
+	ContentCode     ContentType = "code"
+	ContentTable    ContentType = "table"
+	ContentTableRow ContentType = "tablerow"
+	ContentTOC      ContentType = "toc"
+	ContentSpacer   ContentType = "spacer"
+	ContentQuote    ContentType = "quote"
 )
 
 type InlineType string
@@ -38,33 +60,40 @@ const (
 	InlineBold     InlineType = "bold"
 	InlineItalic   InlineType = "italic"
 	InlineMathMode InlineType = "math"
+	InlineAlert    InlineType = "alert"
+	InlineColored  InlineType = "colored"
+	InlineCitation InlineType = "citation"
 )
 
 type InlineContent struct {
 	Type    InlineType `json:"type"`
 	Value   string     `json:"value"`
-	Overlay string     `json:"overlay,omitempty"` // Especificação de clique ex: "2" ou "1-"
+	Color   string     `json:"color,omitempty"`
+	Overlay string     `json:"overlay,omitempty"`
 }
 
 type Content struct {
 	Type     ContentType     `json:"type"`
 	Inline   []InlineContent `json:"inline,omitempty"`
 	Title    string          `json:"title,omitempty"`
-	Width    string          `json:"width,omitempty"`   // Especifico para Column
-	Path     string          `json:"path,omitempty"`    // Especifico para Image
-	Overlay  string          `json:"overlay,omitempty"` // Aplica-se a blocos, colunas e listas
+	Width    string          `json:"width,omitempty"`
+	Path     string          `json:"path,omitempty"`
+	Lang     string          `json:"lang,omitempty"`
+	Overlay  string          `json:"overlay,omitempty"`
 	Children []Content       `json:"children,omitempty"`
 	Ordered  bool            `json:"ordered,omitempty"`
 }
 
 type Parser struct {
-	l         *Lexer
-	curToken  Token
-	peekToken Token
+	l              *Lexer
+	curToken       Token
+	peekToken      Token
+	citationIndex  int
+	citationMap    map[string]int
 }
 
 func NewParser(l *Lexer) *Parser {
-	p := &Parser{l: l}
+	p := &Parser{l: l, citationMap: make(map[string]int)}
 	p.nextToken()
 	p.nextToken()
 	return p
@@ -75,8 +104,53 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
+func (p *Parser) citationRef(key string) string {
+	if n, ok := p.citationMap[key]; ok {
+		return strconv.Itoa(n)
+	}
+	p.citationIndex++
+	p.citationMap[key] = p.citationIndex
+	return strconv.Itoa(p.citationIndex)
+}
+
+func overlayMaxStep(overlay string) int {
+	if overlay == "" {
+		return 0
+	}
+	s := strings.TrimRight(overlay, "-")
+	parts := strings.FieldsFunc(s, func(r rune) bool { return r == '-' || r == ',' })
+	max := 0
+	for _, part := range parts {
+		n, err := strconv.Atoi(strings.TrimSpace(part))
+		if err == nil && n > max {
+			max = n
+		}
+	}
+	return max
+}
+
+func maxStepsFromContent(c Content) int {
+	max := overlayMaxStep(c.Overlay)
+	for _, child := range c.Children {
+		if s := maxStepsFromContent(child); s > max {
+			max = s
+		}
+	}
+	for _, il := range c.Inline {
+		if s := overlayMaxStep(il.Overlay); s > max {
+			max = s
+		}
+	}
+	return max
+}
+
 func (p *Parser) ParsePresentation() (*Presentation, error) {
-	pres := &Presentation{Frames: []Frame{}, Theme: "default"} // "default" como fallback
+	pres := &Presentation{
+		Frames:   []Frame{},
+		Sections: []Section{},
+		Theme:    "default",
+	}
+	currentSection := ""
 
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand {
@@ -85,11 +159,26 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 				pres.Title = p.parseRawArgument()
 			case "author":
 				pres.Author = p.parseRawArgument()
+			case "institute":
+				pres.Institute = p.parseRawArgument()
 			case "date":
-				pres.Date = p.parseRawArgument()
+				d := p.parseRawArgument()
+				if d == "today" || d == "" {
+					pres.Date = time.Now().Format("02/01/2006")
+				} else {
+					pres.Date = d
+				}
 			case "usetheme":
-				// Intercepta \usetheme{Metropolis}
 				pres.Theme = strings.ToLower(p.parseRawArgument())
+			case "section":
+				s := p.parseRawArgument()
+				currentSection = s
+				pres.Sections = append(pres.Sections, Section{
+					Title:      s,
+					SlideIndex: len(pres.Frames),
+				})
+			case "subsection", "subsubsection":
+				_ = p.parseRawArgument()
 			case "begin":
 				arg := p.parseRawArgument()
 				if arg == "frame" {
@@ -97,8 +186,15 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 					if err != nil {
 						return nil, err
 					}
+					frame.Section = currentSection
 					pres.Frames = append(pres.Frames, frame)
+				} else if arg == "document" {
+					// nothing
+				} else if arg != "" {
+					p.skipEnvironment(arg)
 				}
+			case "end":
+				_ = p.parseRawArgument()
 			default:
 				p.skipUnknownCommand()
 			}
@@ -106,19 +202,25 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 			p.nextToken()
 		}
 	}
-
 	return pres, nil
 }
 
+// parseRawArgument reads {content}, skipping an optional leading [...].
 func (p *Parser) parseRawArgument() string {
 	if p.curToken.Type == TokenCommand {
+		p.nextToken()
+	}
+	// Skip optional [short form]
+	if p.curToken.Type == TokenOpenBracket {
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
 		p.nextToken()
 	}
 	if p.curToken.Type != TokenOpenBrace {
 		return ""
 	}
 	p.nextToken()
-
 	var val strings.Builder
 	for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
 		val.WriteString(p.curToken.Value)
@@ -132,14 +234,13 @@ func (p *Parser) parseOverlaySpecification() string {
 	if p.curToken.Type != TokenLessThan {
 		return ""
 	}
-	p.nextToken() // Consome '<'
-
+	p.nextToken()
 	var overlay strings.Builder
 	for p.curToken.Type != TokenGreaterThan && p.curToken.Type != TokenEOF {
 		overlay.WriteString(p.curToken.Value)
 		p.nextToken()
 	}
-	p.nextToken() // Consome '>'
+	p.nextToken()
 	return overlay.String()
 }
 
@@ -159,8 +260,57 @@ func (p *Parser) skipUnknownCommand() {
 	}
 }
 
+// skipEnvironment skips a \begin{env}...\end{env} block.
+func (p *Parser) skipEnvironment(envName string) {
+	// Skip any extra args like {99} in \begin{thebibliography}{99}
+	for p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
+		closeType := TokenCloseBrace
+		if p.curToken.Type == TokenOpenBracket {
+			closeType = TokenCloseBracket
+		}
+		p.nextToken()
+		for p.curToken.Type != closeType && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+		if p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+	}
+	// Skip body until \end{envName}
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
+			arg := p.parseRawArgument()
+			if arg == envName {
+				return
+			}
+		} else {
+			p.nextToken()
+		}
+	}
+}
+
 func (p *Parser) parseFrame() (Frame, error) {
 	var frame Frame
+	pauseStep := 1
+	maxStep := 1
+
+	_ = p.parseOverlaySpecification()
+
+	// Parse optional [options] and detect plain flag
+	if p.curToken.Type == TokenOpenBracket {
+		p.nextToken()
+		var opts strings.Builder
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			opts.WriteString(p.curToken.Value)
+			p.nextToken()
+		}
+		p.nextToken()
+		if strings.Contains(opts.String(), "plain") {
+			frame.Plain = true
+		}
+	}
+
+	_ = p.parseOverlaySpecification()
 
 	if p.curToken.Type == TokenOpenBrace {
 		frame.Title = p.parseRawArgument()
@@ -171,11 +321,70 @@ func (p *Parser) parseFrame() (Frame, error) {
 
 	frame.Content = []Content{}
 
+frameLoop:
 	for p.curToken.Type != TokenEOF {
-		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
-			arg := p.parseRawArgument()
-			if arg == "frame" {
-				break
+		if p.curToken.Type == TokenCommand {
+			switch p.curToken.Value {
+			case "end":
+				arg := p.parseRawArgument()
+				if arg == "frame" {
+					break frameLoop
+				}
+				continue
+			case "pause":
+				pauseStep++
+				if pauseStep > maxStep {
+					maxStep = pauseStep
+				}
+				p.nextToken()
+				continue
+			case "frametitle":
+				p.nextToken()
+				frame.Title = p.parseRawArgument()
+				continue
+			case "framesubtitle":
+				p.nextToken()
+				frame.Subtitle = p.parseRawArgument()
+				continue
+			case "note":
+				p.nextToken()
+				if p.curToken.Type == TokenOpenBracket {
+					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+						p.nextToken()
+					}
+					p.nextToken()
+				}
+				note := p.parseRawArgument()
+				if frame.Notes != "" {
+					frame.Notes += "\n"
+				}
+				frame.Notes += strings.TrimSpace(note)
+				continue
+			case "titlepage":
+				frame.TitlePage = true
+				p.nextToken()
+				continue
+			case "tableofcontents":
+				p.nextToken()
+				if p.curToken.Type == TokenOpenBracket {
+					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+						p.nextToken()
+					}
+					p.nextToken()
+				}
+				frame.Content = append(frame.Content, Content{Type: ContentTOC})
+				continue
+			case "bigskip", "medskip", "smallskip":
+				p.nextToken()
+				frame.Content = append(frame.Content, Content{Type: ContentSpacer})
+				continue
+			case "vspace", "vskip":
+				p.nextToken()
+				if p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
+					p.skipUnknownCommand()
+				}
+				frame.Content = append(frame.Content, Content{Type: ContentSpacer})
+				continue
 			}
 		}
 
@@ -184,10 +393,18 @@ func (p *Parser) parseFrame() (Frame, error) {
 			return frame, err
 		}
 		if content != nil {
+			if pauseStep > 1 && content.Overlay == "" {
+				content.Overlay = fmt.Sprintf("%d-", pauseStep)
+			}
 			frame.Content = append(frame.Content, *content)
+			if s := maxStepsFromContent(*content); s > maxStep {
+				maxStep = s
+			}
 		}
 	}
 
+	frame.MaxSteps = maxStep
+	frame.Notes = strings.TrimSpace(frame.Notes)
 	return frame, nil
 }
 
@@ -196,20 +413,52 @@ func (p *Parser) parseContent() (*Content, error) {
 		switch p.curToken.Value {
 		case "begin":
 			env := p.parseRawArgument()
-			if env == "block" {
-				return p.parseBlock()
-			}
-			if env == "columns" {
+			switch env {
+			case "block", "alertblock", "exampleblock":
+				return p.parseBlock(env)
+			case "columns":
 				return p.parseColumns()
-			}
-			if env == "column" {
+			case "column":
 				return p.parseColumn()
-			}
-			if env == "itemize" || env == "enumerate" {
+			case "itemize", "enumerate":
 				return p.parseSliceList(env)
+			case "onlyenv", "uncoverenv", "visibleenv":
+				return p.parseOverlayEnv(env)
+			case "verbatim":
+				return p.parseVerbatim()
+			case "lstlisting", "minted":
+				return p.parseLstlisting(env)
+			case "tabular", "array":
+				return p.parseTabular()
+			case "quote", "quotation", "verse":
+				return p.parseQuote(env)
+			default:
+				if env != "" {
+					p.skipEnvironment(env)
+				}
+				return nil, nil
 			}
 		case "includegraphics":
 			return p.parseImage(), nil
+		case "only", "uncover", "visible":
+			p.nextToken()
+			overlay := p.parseOverlaySpecification()
+			if overlay == "" {
+				overlay = "1-"
+			}
+			if p.curToken.Type == TokenOpenBrace {
+				p.nextToken()
+				inlineElements := p.parseInlineTokens(func() bool {
+					return p.curToken.Type == TokenEOF || p.curToken.Type == TokenCloseBrace
+				})
+				if p.curToken.Type == TokenCloseBrace {
+					p.nextToken()
+				}
+				if len(inlineElements) > 0 {
+					return &Content{Type: ContentRichText, Overlay: overlay, Inline: inlineElements}, nil
+				}
+			}
+			return nil, nil
 		case "end":
 			return nil, nil
 		}
@@ -220,7 +469,13 @@ func (p *Parser) parseContent() (*Content, error) {
 			return true
 		}
 		if p.curToken.Type == TokenCommand {
-			return p.curToken.Value == "begin" || p.curToken.Value == "end" || p.curToken.Value == "item" || p.curToken.Value == "includegraphics"
+			switch p.curToken.Value {
+			case "begin", "end", "item", "includegraphics",
+				"pause", "note", "frametitle", "framesubtitle",
+				"only", "uncover", "visible",
+				"bigskip", "medskip", "smallskip", "vspace", "vskip":
+				return true
+			}
 		}
 		return false
 	})
@@ -228,13 +483,11 @@ func (p *Parser) parseContent() (*Content, error) {
 	if len(inlineElements) == 0 {
 		return nil, nil
 	}
-
 	return &Content{Type: ContentRichText, Inline: inlineElements}, nil
 }
 
 func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 	var elements []InlineContent
-
 	for !stopCondition() {
 		switch p.curToken.Type {
 		case TokenText:
@@ -249,43 +502,101 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			elements = append(elements, InlineContent{Type: InlineMathMode, Value: val})
 		case TokenCommand:
 			cmd := p.curToken.Value
-			p.nextToken() // Consome o identificador do comando
-
-			// Captura overlay se houver logo após a macro (ex: \textbf<2>{...})
+			p.nextToken()
 			overlay := p.parseOverlaySpecification()
-
-			if cmd == "textbf" {
+			switch cmd {
+			case "textbf":
 				arg := p.parseRawArgument()
 				elements = append(elements, InlineContent{Type: InlineBold, Value: arg, Overlay: overlay})
-			} else if cmd == "textit" {
+			case "textit", "emph":
 				arg := p.parseRawArgument()
 				elements = append(elements, InlineContent{Type: InlineItalic, Value: arg, Overlay: overlay})
-			} else {
-				// Fallback caso seja um comando desconhecido dentro do bloco de texto
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\\" + cmd})
+			case "alert":
+				arg := p.parseRawArgument()
+				elements = append(elements, InlineContent{Type: InlineAlert, Value: arg, Overlay: overlay})
+			case "textcolor":
+				color := p.parseRawArgument()
+				text := p.parseRawArgument()
+				elements = append(elements, InlineContent{Type: InlineColored, Color: color, Value: text, Overlay: overlay})
+			case "footcite", "cite", "autocite", "textcite", "parencite",
+				"citeauthor", "citeyear", "citetitle", "footnotemark":
+				arg := p.parseRawArgument()
+				ref := p.citationRef(arg)
+				elements = append(elements, InlineContent{Type: InlineCitation, Value: ref, Overlay: overlay})
+			case "footnote":
+				_ = p.parseRawArgument() // ignore footnote body
+				ref := p.citationRef("footnote")
+				elements = append(elements, InlineContent{Type: InlineCitation, Value: ref, Overlay: overlay})
+			case "textrm", "textsf", "texttt", "textnormal", "text", "mbox",
+				"textsc", "textup":
+				arg := p.parseRawArgument()
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Overlay: overlay})
+			// Font size commands: consume optional {} argument if present, output text
+			case "Huge", "huge", "LARGE", "Large", "large",
+				"normalsize", "small", "footnotesize", "scriptsize", "tiny":
+				// These don't take arguments; text follows
+			case "\\":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: " "})
+			// Special character escapes
+			case "&", "%", "#", "_", "^", "~", "{", "}":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: cmd})
+			case "ldots", "dots":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "…"})
+			case "textendash":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "–"})
+			case "textemdash":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "—"})
+			case "href":
+				_ = p.parseRawArgument() // url
+				label := p.parseRawArgument()
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: label})
+			default:
+				// Unknown command with a brace argument: absorb the arg as text
+				if p.curToken.Type == TokenOpenBrace {
+					arg := p.parseRawArgument()
+					if strings.TrimSpace(arg) != "" {
+						elements = append(elements, InlineContent{Type: InlinePureText, Value: arg})
+					}
+				}
+				// Otherwise: silently skip (no nextToken needed, already advanced past cmd)
 			}
 		default:
 			p.nextToken()
 		}
 	}
-
 	return elements
 }
 
-func (p *Parser) parseBlock() (*Content, error) {
-	block := &Content{Type: ContentBlock, Children: []Content{}}
-
-	// Ex: \begin{block}<2->{Título}
-	block.Overlay = p.parseOverlaySpecification()
-
-	if p.curToken.Type == TokenOpenBrace {
-		block.Title = p.parseRawArgument()
-	}
-
+func (p *Parser) parseQuote(envName string) (*Content, error) {
+	quote := &Content{Type: ContentQuote, Children: []Content{}}
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
 			arg := p.parseRawArgument()
-			if arg == "block" {
+			if arg == envName || arg == "quote" || arg == "quotation" || arg == "verse" {
+				break
+			}
+		}
+		content, err := p.parseContent()
+		if err != nil {
+			return nil, err
+		}
+		if content != nil {
+			quote.Children = append(quote.Children, *content)
+		}
+	}
+	return quote, nil
+}
+
+func (p *Parser) parseBlock(envName string) (*Content, error) {
+	block := &Content{Type: ContentBlock, Children: []Content{}}
+	block.Overlay = p.parseOverlaySpecification()
+	if p.curToken.Type == TokenOpenBrace {
+		block.Title = p.parseRawArgument()
+	}
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
+			arg := p.parseRawArgument()
+			if arg == envName || arg == "block" || arg == "alertblock" || arg == "exampleblock" {
 				break
 			}
 		}
@@ -302,7 +613,12 @@ func (p *Parser) parseBlock() (*Content, error) {
 
 func (p *Parser) parseColumns() (*Content, error) {
 	columns := &Content{Type: ContentColumns, Children: []Content{}}
-
+	if p.curToken.Type == TokenOpenBracket {
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+		p.nextToken()
+	}
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
 			arg := p.parseRawArgument()
@@ -323,13 +639,16 @@ func (p *Parser) parseColumns() (*Content, error) {
 
 func (p *Parser) parseColumn() (*Content, error) {
 	column := &Content{Type: ContentColumn, Children: []Content{}}
-
 	column.Overlay = p.parseOverlaySpecification()
-
+	if p.curToken.Type == TokenOpenBracket {
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+		p.nextToken()
+	}
 	if p.curToken.Type == TokenOpenBrace {
 		column.Width = p.parseRawArgument()
 	}
-
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
 			arg := p.parseRawArgument()
@@ -348,23 +667,117 @@ func (p *Parser) parseColumn() (*Content, error) {
 	return column, nil
 }
 
-func (p *Parser) parseImage() *Content {
-	// Consome \includegraphics
-	p.nextToken()
+func (p *Parser) parseOverlayEnv(envName string) (*Content, error) {
+	overlay := p.parseOverlaySpecification()
+	if overlay == "" {
+		overlay = "1-"
+	}
+	container := &Content{Type: ContentBlock, Overlay: overlay, Children: []Content{}}
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
+			arg := p.parseRawArgument()
+			if arg == envName {
+				break
+			}
+		}
+		content, err := p.parseContent()
+		if err != nil {
+			return nil, err
+		}
+		if content != nil {
+			container.Children = append(container.Children, *content)
+		}
+	}
+	return container, nil
+}
 
-	// Se tiver opções [width=...], pula ou armazena por enquanto
+func (p *Parser) parseVerbatim() (*Content, error) {
+	raw := p.l.ReadRawUntil(`\end{verbatim}`)
+	p.curToken = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
+	return &Content{Type: ContentVerbatim, Title: strings.TrimLeft(raw, "\n\r")}, nil
+}
+
+func (p *Parser) parseLstlisting(envName string) (*Content, error) {
+	lang := ""
+	if p.curToken.Type == TokenOpenBracket {
+		p.nextToken()
+		var opts strings.Builder
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			opts.WriteString(p.curToken.Value)
+			p.nextToken()
+		}
+		p.nextToken()
+		optsStr := opts.String()
+		if idx := strings.Index(optsStr, "language="); idx != -1 {
+			after := optsStr[idx+9:]
+			end := strings.IndexAny(after, ",]")
+			if end == -1 {
+				lang = strings.TrimSpace(after)
+			} else {
+				lang = strings.TrimSpace(after[:end])
+			}
+		} else if !strings.Contains(optsStr, "=") {
+			lang = strings.TrimSpace(optsStr)
+		}
+	}
+	if envName == "minted" && p.curToken.Type == TokenOpenBrace {
+		lang = p.parseRawArgument()
+	}
+	endMarker := fmt.Sprintf(`\end{%s}`, envName)
+	raw := p.l.ReadRawUntil(endMarker)
+	p.curToken = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
+	return &Content{Type: ContentCode, Lang: strings.ToLower(lang), Title: strings.TrimLeft(raw, "\n\r")}, nil
+}
+
+func (p *Parser) parseTabular() (*Content, error) {
+	if p.curToken.Type == TokenOpenBrace {
+		p.parseRawArgument()
+	}
+	raw := p.l.ReadRawUntil(`\end{tabular}`)
+	p.curToken = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
+
+	table := &Content{Type: ContentTable, Children: []Content{}}
+	rows := strings.Split(raw, `\\`)
+	for _, row := range rows {
+		row = strings.ReplaceAll(row, `\hline`, "")
+		row = strings.TrimSpace(row)
+		if row == "" {
+			continue
+		}
+		cells := strings.Split(row, "&")
+		tableRow := Content{Type: ContentTableRow, Children: []Content{}}
+		for _, cell := range cells {
+			cell = strings.TrimSpace(cell)
+			if cell == "" {
+				cell = " "
+			}
+			tableRow.Children = append(tableRow.Children, Content{
+				Type:   ContentRichText,
+				Inline: []InlineContent{{Type: InlinePureText, Value: cell}},
+			})
+		}
+		if len(tableRow.Children) > 0 {
+			table.Children = append(table.Children, tableRow)
+		}
+	}
+	return table, nil
+}
+
+func (p *Parser) parseImage() *Content {
+	p.nextToken()
 	if p.curToken.Type == TokenOpenBracket {
 		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
 			p.nextToken()
 		}
-		p.nextToken() // Consome ']'
+		p.nextToken()
 	}
-
 	path := ""
 	if p.curToken.Type == TokenOpenBrace {
 		path = p.parseRawArgument()
 	}
-
 	return &Content{Type: ContentImage, Path: path}
 }
 
@@ -374,7 +787,12 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 		Ordered:  listType == "enumerate",
 		Children: []Content{},
 	}
-
+	if p.curToken.Type == TokenOpenBracket {
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+		p.nextToken()
+	}
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand {
 			if p.curToken.Value == "end" {
@@ -384,16 +802,19 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 				}
 			}
 			if p.curToken.Value == "item" {
-				p.nextToken() // Consome \item
-
-				// Captura overlay do item ex: \item<1->
+				p.nextToken()
 				itemOverlay := p.parseOverlaySpecification()
-
+				if p.curToken.Type == TokenOpenBracket {
+					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+						p.nextToken()
+					}
+					p.nextToken()
+				}
 				inlineElements := p.parseInlineTokens(func() bool {
 					return p.curToken.Type == TokenEOF ||
-						(p.curToken.Type == TokenCommand && (p.curToken.Value == "item" || p.curToken.Value == "end"))
+						(p.curToken.Type == TokenCommand &&
+							(p.curToken.Value == "item" || p.curToken.Value == "end" || p.curToken.Value == "pause"))
 				})
-
 				list.Children = append(list.Children, Content{
 					Type:    ContentRichText,
 					Overlay: itemOverlay,
@@ -401,9 +822,12 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 				})
 				continue
 			}
+			if p.curToken.Value == "pause" {
+				p.nextToken()
+				continue
+			}
 		}
 		p.nextToken()
 	}
-
 	return list, nil
 }

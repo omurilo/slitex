@@ -1,0 +1,168 @@
+\documentclass[
+	11pt,
+	aspectratio=169,
+]{beamer}
+
+\graphicspath{{Images/}{./}}
+
+\usepackage{booktabs}
+\usepackage[brazil]{babel}   
+\usepackage[utf8]{inputenc}
+
+\usepackage[autostyle]{csquotes}
+\usepackage[style=authortitle-icomp,backend=biber]{biblatex}
+\addbibresource{presentation.bib}
+
+\usepackage[]{hyperref}
+\hypersetup{colorlinks=true}
+
+\usetheme{Palo Alto}
+\usefonttheme{default} 
+\usepackage{palatino} 
+\usepackage[default]{opensans} 
+\useinnertheme{circles}
+
+\setbeamertemplate{navigation symbols}{}
+
+
+\title[Engenharia de Plataforma]{Engenharia de Plataforma?}
+\author[Murilo Alves]{Murilo Henrique Alves} 
+\institute[UTFPR]{Universidade Tecnológica Federal do Paraná} 
+\date[\today]{\today}
+
+\begin{document}
+
+\begin{frame}
+	\titlepage
+\end{frame}
+
+\begin{frame}
+	\frametitle{O que veremos?}
+	
+	\tableofcontents
+	%\tableofcontents[pausesections]
+\end{frame}
+
+
+\section{Engenharia de Plataforma}
+
+\begin{frame}
+	\frametitle{O que é?}
+
+	A Engenharia de plataforma é uma disciplina da engenharia de software que tem como objetivo
+  projetar e desenvolver cadeias de ferramentas e fluxos de trabalho de autoatendimento,
+  especialmente no contexto "cloud-native" \footcite{galante}.
+\end{frame}
+
+\begin{frame}
+	\frametitle{De onde surgiu?}
+
+	Engenharia de Plataforma surge à partir de necessidades específicas de times de engenharia relacionado com
+	a aplicação na prática da cultura DevOps.
+
+	\bigskip
+
+	A cultura DevOps tem como uma de suas primícias a frase: "You build it, you run it", e aplicar isso na prática
+	pode ser algo simples para organizações complexas como Google, AirBnb e Amazon, porém, é algo pouco realista pensar
+	em aplicar a verdadeira cultura DevOps na prática na maioria dos times de engenharia nas empresas ''comuns''.
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Ferramentas de DevOps}
+	\framesubtitle{Um pequeno apanhado de tecnologias utilizadas para um workflow de entrega contínua em produção}
+
+	\begin{itemize}
+		\item Terraform (Infra as Code)
+		\item Docker
+		\item Helm Charts
+		\item Kubernets
+		\item GitOps
+		\item CI (circleci, github actions, azure devops, bitbucket pipelines, jenkins, gitlab, tekton)
+		\item CD (argocd, fluxcd, harnesscd, tekton)
+		\item Secrets Manager (Hashicorp Vault, AWS SM)
+		\item AWS (SQS, SNS, EC2, ECS, Lambda, CloudFront)
+	\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+
+	Segundo Matthew Skelton \footcite{matthew}, quando empresas comuns tentam implementar
+	na prática uma cultura DevOps, geralmente elas acabam gerando uma série de anti-padrões,
+	devido à vários fatores como:
+    \begin{itemize}
+      \item é improvável que a maioria das empresas tenham acesso ao mesmo conjunto de talentos
+      e ao mesmo nível de recursos que podem investir em melhoria do fluxo de trabalho
+      e a experiência de desenvolvimento.
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{O que faz?}
+
+	As equipes de engenharia de plataforma geralmente fornecem o que é conhecido como
+"Internal Developer Platform" (IDP), que visa atender a todas as necessidades
+operacionais ao longo do ciclo de vida de um aplicativo.
+
+\end{frame}
+
+\section{Internal Developer Platform}
+
+\begin{frame}
+	\frametitle{O que é?}
+
+	 Uma IDP engloba um conjunto de ferramentas e tecnologias, integradas de uma maneira à reduzir
+	 a carga cognitiva nos desenvolvedores e ajudando a mantê-los em seus contextos originais de produto.
+	\bigskip
+
+	\begin{quote}
+		Uma plataforma interna de desenvolvedor se concentra nas práticas de desenvolvimento interno de uma empresa.
+	Você define um conjunto de caminhos de desenvolvimento recomendados e suportados para a produção e
+	"pavimenta" incrementalmente um caminho através deles com uma plataforma interna.\\
+		--- Kulla-Mader \& Lantz \footcite{kulla}
+	\end{quote}
+
+\end{frame}
+
+\begin{frame}
+	\frametitle{Golden Paths e Paved Roads}
+  
+  Esses caminhos de desenvolvimento recomendados são comunmente chamados de "Golden Paths" ou "Paved Roads".
+
+  \bigskip
+
+  Uma "Paved Road" consiste em um conjunto de processos e/ou ferramentas que são necessárias nos fluxos de
+  entrega contínua mas que não são necessariamente de propriedade dos times de produtos, então os engenheiros
+  de plataforma definem quais são esses processos e ferramentas e fornecem a cola para unir tudo em uma experiência
+  de autoatendimento consistente.
+\end{frame}
+
+\begin{frame}
+  \frametitle{A cola}
+
+  Essa cola é a plataforma interna. Nas palavras de Evan Bottcher (Thoughworks) \footcite{evan}, plataformas são \begin{quote}
+    uma base de APIs, ferramentas, serviços, conhecimento e suporte de autoatendimento, organizados como um produto interno atraente.
+    Equipes de entrega autônomas podem usar a plataforma para entregar recursos de produtos em um ritmo mais acelerado,
+    com coordenação reduzida.
+  \end{quote}
+  
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+	\frametitle{Referências}
+	
+	\begin{thebibliography}{99}
+		\footnotesize
+		
+    	\printbibliography
+    
+	\end{thebibliography}
+\end{frame}
+
+\begin{frame}[plain]
+	{\Huge The End}
+\end{frame}
+
+\end{document}

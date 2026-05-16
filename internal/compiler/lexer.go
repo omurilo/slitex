@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"strings"
 	"unicode"
 )
 
@@ -52,6 +53,13 @@ func (l *Lexer) readChar() {
 
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
+	// Skip LaTeX line comments: % until end of line
+	for l.ch == '%' {
+		for l.ch != '\n' && l.ch != 0 {
+			l.readChar()
+		}
+		l.skipWhitespace()
+	}
 
 	var tok Token
 	tok.Line = l.line
@@ -154,7 +162,7 @@ func (l *Lexer) readBlockMath() string {
 
 func (l *Lexer) readText() string {
 	position := l.position
-	for l.ch != 0 && l.ch != '\\' && l.ch != '{' && l.ch != '}' && l.ch != '[' && l.ch != ']' && l.ch != '$' && l.ch != '<' && l.ch != '>' {
+	for l.ch != 0 && l.ch != '\\' && l.ch != '{' && l.ch != '}' && l.ch != '[' && l.ch != ']' && l.ch != '$' && l.ch != '<' && l.ch != '>' && l.ch != '%' {
 		if l.ch == '\n' {
 			l.line++
 		}
@@ -174,4 +182,24 @@ func (l *Lexer) skipWhitespace() {
 
 func isLetter(ch byte) bool {
 	return unicode.IsLetter(rune(ch))
+}
+
+// ReadRawUntil reads raw text until endMarker is found,
+// returning content before the marker and advancing past it.
+func (l *Lexer) ReadRawUntil(endMarker string) string {
+	var sb strings.Builder
+	for l.ch != 0 {
+		if strings.HasPrefix(l.input[l.position:], endMarker) {
+			for range endMarker {
+				l.readChar()
+			}
+			return sb.String()
+		}
+		if l.ch == '\n' {
+			l.line++
+		}
+		sb.WriteByte(l.ch)
+		l.readChar()
+	}
+	return sb.String()
 }

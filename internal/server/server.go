@@ -15,16 +15,34 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+type SyncState struct {
+	Slide int `json:"slide"`
+	Step  int `json:"step"`
+}
+
 type DevServer struct {
 	targetFile string
 	mu         sync.Mutex
-	clients    map[chan bool]bool
+	clients    map[chan string]bool
+	syncState  SyncState
 }
 
 func NewDevServer(targetFile string) *DevServer {
 	return &DevServer{
 		targetFile: targetFile,
-		clients:    make(map[chan bool]bool),
+		clients:    make(map[chan string]bool),
+		syncState:  SyncState{Slide: 0, Step: 1},
+	}
+}
+
+func (s *DevServer) broadcast(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for ch := range s.clients {
+		select {
+		case ch <- msg:
+		default:
+		}
 	}
 }
 
@@ -34,11 +52,21 @@ func (s *DevServer) sseHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	messageChan := make(chan bool)
+	messageChan := make(chan string, 8)
 
 	s.mu.Lock()
 	s.clients[messageChan] = true
+	// Send current sync state to newly connected client
+	stateJSON, _ := json.Marshal(map[string]interface{}{
+		"type":  "sync",
+		"slide": s.syncState.Slide,
+		"step":  s.syncState.Step,
+	})
 	s.mu.Unlock()
+
+	// Send initial state immediately
+	fmt.Fprintf(w, "data: %s\n\n", stateJSON)
+	w.(http.Flusher).Flush()
 
 	defer func() {
 		s.mu.Lock()
@@ -53,11 +81,57 @@ func (s *DevServer) sseHandler(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-notify:
 			return
-		case <-messageChan:
-			fmt.Fprintf(w, "data: reload\n\n")
+		case msg, ok := <-messageChan:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(w, "data: %s\n\n", msg)
 			w.(http.Flusher).Flush()
 		}
 	}
+}
+
+func (s *DevServer) syncHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		s.mu.Lock()
+		state := s.syncState
+		s.mu.Unlock()
+		json.NewEncoder(w).Encode(state)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var state SyncState
+		if err := json.NewDecoder(r.Body).Decode(&state); err != nil {
+			http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+			return
+		}
+		s.mu.Lock()
+		s.syncState = state
+		s.mu.Unlock()
+
+		msg, _ := json.Marshal(map[string]interface{}{
+			"type":  "sync",
+			"slide": state.Slide,
+			"step":  state.Step,
+		})
+		s.broadcast(string(msg))
+
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
@@ -106,12 +180,7 @@ func (s *DevServer) watchFile() {
 				if time.Since(lastEventTime) > 100*time.Millisecond {
 					lastEventTime = time.Now()
 					log.Printf("Arquivo [%s] modificado. Atualizando clients...", s.targetFile)
-
-					s.mu.Lock()
-					for clientChan := range s.clients {
-						clientChan <- true
-					}
-					s.mu.Unlock()
+					s.broadcast("reload")
 				}
 			}
 		case err, ok := <-watcher.Errors:
@@ -129,21 +198,16 @@ func (s *DevServer) Start(port string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/ast", s.apiASTHandler)
 	mux.HandleFunc("/api/live", s.sseHandler)
+	mux.HandleFunc("/api/sync", s.syncHandler)
 
-	// Permite que o Go sirva plugins e pacotes externos instalados no escopo do usuário
 	mux.Handle("/themes/external/", http.StripPrefix("/themes/external/", http.FileServer(http.Dir("./node_modules"))))
 
-	// Captura os assets estáticos do React embutidos via go:embed
 	reactUI := ui.GetFileSystem()
 	fileServer := http.FileServer(reactUI)
 
-	// Fallback para SPA (Single Page Application): Se a rota não for um arquivo físico (ex: /presenter ou /projector),
-	// serve o index.html do React para o roteador interno resolver o estado visual.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Abre o arquivo requisitado no sistema de arquivos embutido
 		f, err := reactUI.Open(r.URL.Path)
 		if err != nil {
-			// Se o arquivo não existir, força a entrega do index.html (mecanismo SPA)
 			r.URL.Path = "/"
 		} else {
 			f.Close()
