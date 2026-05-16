@@ -8,7 +8,7 @@ export interface ThemeFrameProps {
   frame: Frame;
   currentStep: number;
   slideIndex: number;
-  totalSlides: number;
+  totaslitexs: number;
   presentationTitle: string;
   presentationAuthor: string;
   presentationInstitute: string;

@@ -14,7 +14,7 @@ function useExternalTheme(themeName: string) {
   useEffect(() => {
     if (!themeName || nativeThemes.includes(themeName)) return;
 
-    const themePkgName = `lslide-theme-${themeName}`;
+    const themePkgName = `slitex-theme-${themeName}`;
 
     let link = document.getElementById('external-theme-style') as HTMLLinkElement;
     if (!link) {
@@ -39,7 +39,7 @@ function useExternalTheme(themeName: string) {
   }, [themeName]);
 }
 
-function getInitialSlide(): number {
+function getInitiaslitex(): number {
   const params = new URLSearchParams(window.location.search);
   const slide = params.get('slide');
   return slide ? Math.max(0, parseInt(slide, 10) - 1) : 0;
@@ -49,7 +49,7 @@ function App() {
   const [ast, setAst] = useState<PresentationAST | null>(null);
   const [error, setError] = useState<string | null>(null);
   const path = window.location.pathname;
-  const initialSlide = getInitialSlide();
+  const initiaslitex = getInitiaslitex();
 
   useExternalTheme(ast?.theme ?? '');
 
@@ -108,8 +108,8 @@ function App() {
     );
   }
 
-  if (path === '/presenter') return <ViewPresenter ast={ast} initialSlide={initialSlide} />;
-  if (path === '/projector') return <ViewProjector ast={ast} initialSlide={initialSlide} />;
+  if (path === '/presenter') return <ViewPresenter ast={ast} initiaslitex={initiaslitex} />;
+  if (path === '/projector') return <ViewProjector ast={ast} initiaslitex={initiaslitex} />;
   if (path === '/overview') return <ViewOverview ast={ast} />;
   if (path === '/print') return <ViewPrint ast={ast} />;
   return <ViewLanding ast={ast} />;

@@ -3,11 +3,11 @@ import type { PresentationAST } from '../types';
 import { useSyncSlides } from '../hooks/useSyncSlides';
 import { SlideRenderer } from '../components/SlideRenderer';
 import { builtinThemes } from '../themes';
-import { PresentationContext } from '../contexts/PresentationContext';
+import { PresentationContext, usePresentationContextValue } from '../contexts/PresentationContext';
 
 interface ProjectorProps {
   ast: PresentationAST;
-  initialSlide?: number;
+  initiaslitex?: number;
 }
 
 /** Renders the slide at a fixed 1920×1080 canvas and scales to fit the container. */
@@ -70,8 +70,8 @@ const SlideCanvas: React.FC<{
   );
 };
 
-export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initialSlide = 0 }) => {
-  const { currentSlide, currentStep, updateState } = useSyncSlides(initialSlide);
+export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 }) => {
+  const { currentSlide, currentStep, updateState } = useSyncSlides(initiaslitex);
   const [showOverview, setShowOverview] = useState(false);
   const frames = ast.frames || [];
   const activeFrame = frames[currentSlide];
@@ -143,15 +143,25 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initialSlide = 0 
 
   // Resolve theme: builtin → external → null
   const BuiltinFrame = builtinThemes[ast.theme] ?? builtinThemes['default'];
-  const ExternalTheme = (window as any).LSlideThemes?.[ast.theme];
+  const ExternalTheme = (window as any).slitexThemes?.[ast.theme];
   const FrameComponent = ExternalTheme?.Frame ?? BuiltinFrame;
+
+  const ctxValue = usePresentationContextValue(
+    ast.sections ?? [],
+    ast.title,
+    ast.author,
+    ast.institute ?? '',
+    ast.date ?? '',
+    ast.bibliography ?? [],
+    ast.citations ?? [],
+  );
 
   const frameContent = (
     <FrameComponent
       frame={activeFrame}
       currentStep={currentStep}
       slideIndex={currentSlide}
-      totalSlides={frames.length}
+      totaslitexs={frames.length}
       presentationTitle={ast.title}
       presentationAuthor={ast.author}
       presentationInstitute={ast.institute ?? ''}
@@ -164,13 +174,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initialSlide = 0 
   );
 
   return (
-    <PresentationContext.Provider value={{
-      sections: ast.sections ?? [],
-      presentationTitle: ast.title,
-      presentationAuthor: ast.author,
-      presentationInstitute: ast.institute ?? '',
-      presentationDate: ast.date ?? '',
-    }}>
+    <PresentationContext.Provider value={ctxValue}>
     <div
       className="w-full h-full overflow-hidden relative"
       onTouchStart={handleTouchStart}

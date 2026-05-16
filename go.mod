@@ -1,4 +1,4 @@
-module github.com/omurilo/lslide
+module github.com/omurilo/slitex
 
 go 1.23.1
 

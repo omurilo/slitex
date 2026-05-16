@@ -27,7 +27,7 @@ const Dots: React.FC<{ total: number; current: number }> = ({ total, current }) 
 );
 
 export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
-  frame, slideIndex, totalSlides, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
+  frame, slideIndex, totaslitexs, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
 }) => {
   const isTitleSlide = frame.titlePage || (!frame.title && !frame.subtitle);
 
@@ -37,8 +37,8 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
         {/* Nav bar */}
         <div style={{ padding: '20px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }}>
           <span style={{ fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 500, letterSpacing: '0.05em', opacity: 0.9 }}>{presentationAuthor}</span>
-          <Dots total={Math.min(totalSlides, 12)} current={slideIndex} />
-          <span style={{ fontSize: '14px', fontFamily: 'monospace', opacity: 0.7 }}>{slideIndex + 1} / {totalSlides}</span>
+          <Dots total={Math.min(totaslitexs, 12)} current={slideIndex} />
+          <span style={{ fontSize: '14px', fontFamily: 'monospace', opacity: 0.7 }}>{slideIndex + 1} / {totaslitexs}</span>
         </div>
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 120px', textAlign: 'center' }}>
@@ -74,7 +74,7 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
       {/* Top bar: dark teal with presentation meta */}
       <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '16px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 500 }}>{presentationTitle}</span>
-        <Dots total={Math.min(totalSlides, 12)} current={slideIndex} />
+        <Dots total={Math.min(totaslitexs, 12)} current={slideIndex} />
         <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', fontFamily: 'sans-serif' }}>{presentationAuthor}</span>
       </div>
 
@@ -101,7 +101,7 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
       <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '12px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '12px', fontFamily: 'sans-serif', fontWeight: 500, flexShrink: 0 }}>
         <span>{presentationAuthor}</span>
         <span style={{ maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{presentationTitle}</span>
-        <span style={{ fontFamily: 'monospace' }}>{slideIndex + 1} / {totalSlides}</span>
+        <span style={{ fontFamily: 'monospace' }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
     </div>
   );

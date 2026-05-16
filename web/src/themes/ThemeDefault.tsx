@@ -15,9 +15,9 @@ const VARS = {
 } as React.CSSProperties;
 
 export const ThemeDefaultFrame: React.FC<ThemeFrameProps> = ({
-  frame, slideIndex, totalSlides, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
+  frame, slideIndex, totaslitexs, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
 }) => {
-  const progress = ((slideIndex + 1) / totalSlides) * 100;
+  const progress = ((slideIndex + 1) / totaslitexs) * 100;
   const isTitleSlide = frame.titlePage || (!frame.title && !frame.subtitle);
 
   if (isTitleSlide) {
@@ -41,7 +41,7 @@ export const ThemeDefaultFrame: React.FC<ThemeFrameProps> = ({
           <div style={{ marginTop: '24px', color: '#6366f1', fontSize: '22px', fontWeight: 500 }}>{children}</div>
         </div>
         <div style={{ padding: '20px 72px', display: 'flex', justifyContent: 'flex-end', color: '#cbd5e1', fontSize: '14px', fontWeight: 600, letterSpacing: '0.06em', flexShrink: 0 }}>
-          {slideIndex + 1} / {totalSlides}
+          {slideIndex + 1} / {totaslitexs}
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export const ThemeDefaultFrame: React.FC<ThemeFrameProps> = ({
       {/* Footer */}
       <div style={{ padding: '14px 72px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '13px', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', flexShrink: 0 }}>
         <span style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationTitle}</span>
-        <span style={{ fontFamily: 'monospace', letterSpacing: 0 }}>{slideIndex + 1} / {totalSlides}</span>
+        <span style={{ fontFamily: 'monospace', letterSpacing: 0 }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
 
       {/* Progress bar */}

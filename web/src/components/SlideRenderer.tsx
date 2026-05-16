@@ -23,7 +23,7 @@ const CODE_BG  = () => cv('--slide-code-bg', '#0f172a');
 const CODE_TXT = () => cv('--slide-code-text', '#e2e8f0');
 
 export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) => {
-  const { sections } = usePresentationContext();
+  const { sections, citationNumber, bibEntry, citations, bibliography } = usePresentationContext();
   const shouldShow = (overlayStr?: string): boolean => {
     if (!overlayStr) return true;
     const rangeMatch = overlayStr.match(/^(\d+)-(\d+)$/);
@@ -53,8 +53,31 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           return el.value.includes('\n') || el.value.length > 30
             ? <div key={i} style={{ margin: '0.4em 0' }}><ReactLatex>{el.value}</ReactLatex></div>
             : <span key={i} style={{ margin: '0 0.1em' }}><ReactLatex>{el.value}</ReactLatex></span>;
-        case 'citation':
-          return <sup key={i} style={{ fontSize: '0.6em', color: MUTED(), marginLeft: '0.1em', verticalAlign: 'super' }}>[{el.value}]</sup>;
+        case 'citation': {
+          const num = citationNumber(el.value);
+          const entry = bibEntry(el.value);
+          const label = num ? `[${num}]` : `[?]`;
+          const parts: string[] = [];
+          if (entry?.author) parts.push(entry.author);
+          if (entry?.title) parts.push(`"${entry.title}"`);
+          if (entry?.year) parts.push(`(${entry.year})`);
+          const tooltip = parts.length ? parts.join(', ') : el.value;
+          return (
+            <sup key={i} title={tooltip}
+              style={{ fontSize: '0.58em', color: ACCENT(), marginLeft: '0.1em', verticalAlign: 'super', cursor: 'default' }}>
+              {label}
+            </sup>
+          );
+        }
+        case 'url': {
+          const href = el.color || el.value;
+          return (
+            <a key={i} href={href} target="_blank" rel="noreferrer noopener"
+              style={{ color: ACCENT(), textDecoration: 'underline', wordBreak: 'break-all', fontSize: '0.85em' }}>
+              {el.value}
+            </a>
+          );
+        }
         default:
           return <span key={i}>{el.value}</span>;
       }
@@ -260,6 +283,34 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           </ol>
         </div>
       );
+
+    case 'bibliography': {
+      const entries = citations
+        .sort((a, b) => a.index - b.index)
+        .map(cit => ({ cit, entry: bibliography.find(b => b.key === cit.key) }));
+      if (entries.length === 0) return null;
+      return (
+        <div style={{ fontSize: '0.7em', lineHeight: 1.7, color: TEXT() }}>
+          {entries.map(({ cit, entry }) => (
+            <div key={cit.key} style={{ display: 'flex', gap: '0.6em', marginBottom: '0.5em', alignItems: 'flex-start' }}>
+              <span style={{ color: ACCENT(), fontWeight: 700, minWidth: '1.8em', flexShrink: 0 }}>
+                [{cit.index}]
+              </span>
+              <span>
+                {entry?.author && <span>{entry.author}. </span>}
+                {entry?.title && <em>{entry.title}. </em>}
+                {entry?.journal && <span>{entry.journal}{entry.volume ? `, ${entry.volume}` : ''}{entry.number ? `(${entry.number})` : ''}, </span>}
+                {entry?.booktitle && <span>In: <em>{entry.booktitle}</em>, </span>}
+                {entry?.publisher && <span>{entry.publisher}, </span>}
+                {entry?.year && <span>{entry.year}.</span>}
+                {entry?.url && <> <a href={entry.url} target="_blank" rel="noreferrer noopener" style={{ color: ACCENT() }}>{entry.url}</a></>}
+                {!entry && <span style={{ color: MUTED() }}>{cit.key}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     default:
       return null;

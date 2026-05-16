@@ -5,11 +5,11 @@ import { SlideRenderer } from '../components/SlideRenderer';
 
 interface PresenterProps {
   ast: PresentationAST;
-  initialSlide?: number;
+  initiaslitex?: number;
 }
 
-export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initialSlide = 0 }) => {
-  const { currentSlide, currentStep, updateState } = useSyncSlides(initialSlide);
+export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 }) => {
+  const { currentSlide, currentStep, updateState } = useSyncSlides(initiaslitex);
   const [seconds, setSeconds] = useState(0);
   const touchStartX = useRef(0);
 

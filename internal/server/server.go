@@ -6,11 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/omurilo/lslide/internal/compiler"
-	"github.com/omurilo/lslide/internal/ui"
+	"github.com/omurilo/slitex/internal/compiler"
+	"github.com/omurilo/slitex/internal/ui"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -144,8 +145,9 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	baseDir := filepath.Dir(s.targetFile)
 	lexer := compiler.NewLexer(string(content))
-	parser := compiler.NewParser(lexer)
+	parser := compiler.NewParser(lexer, baseDir)
 
 	presentation, err := parser.ParsePresentation()
 	if err != nil {
@@ -153,7 +155,38 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve and parse .bib files
+	for _, res := range presentation.BibResources {
+		bibPath := resolveBibPath(res, baseDir)
+		if bibPath == "" {
+			continue
+		}
+		bibContent, err := os.ReadFile(bibPath)
+		if err != nil {
+			continue
+		}
+		entries := compiler.ParseBibTeX(string(bibContent))
+		presentation.Bibliography = append(presentation.Bibliography, entries...)
+	}
+
 	json.NewEncoder(w).Encode(presentation)
+}
+
+// resolveBibPath resolves a bib resource name to an absolute file path,
+// searching in baseDir and baseDir/templates.
+func resolveBibPath(resource, baseDir string) string {
+	candidates := []string{
+		filepath.Join(baseDir, resource),
+		filepath.Join(baseDir, resource+".bib"),
+		filepath.Join(baseDir, "templates", resource),
+		filepath.Join(baseDir, "templates", resource+".bib"),
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return ""
 }
 
 func (s *DevServer) watchFile() {
@@ -215,6 +248,6 @@ func (s *DevServer) Start(port string) error {
 		fileServer.ServeHTTP(w, r)
 	})
 
-	log.Printf("🚀 lslide V1 ativo em http://localhost:%s", port)
+	log.Printf("🚀 slitex V1 ativo em http://localhost:%s", port)
 	return http.ListenAndServe(":"+port, mux)
 }

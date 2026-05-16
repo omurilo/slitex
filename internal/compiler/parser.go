@@ -2,6 +2,8 @@ package compiler
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,13 +17,18 @@ type Section struct {
 }
 
 type Presentation struct {
-	Title     string    `json:"title"`
-	Author    string    `json:"author"`
-	Institute string    `json:"institute,omitempty"`
-	Date      string    `json:"date,omitempty"`
-	Theme     string    `json:"theme"`
-	Sections  []Section `json:"sections"`
-	Frames    []Frame   `json:"frames"`
+	Title        string        `json:"title"`
+	Author       string        `json:"author"`
+	Institute    string        `json:"institute,omitempty"`
+	Date         string        `json:"date,omitempty"`
+	Theme        string        `json:"theme"`
+	Language     string        `json:"language,omitempty"`
+	Packages     []string      `json:"packages,omitempty"`
+	Sections     []Section     `json:"sections"`
+	Frames       []Frame       `json:"frames"`
+	BibResources []string      `json:"bibResources,omitempty"`
+	Citations    []CitationRef `json:"citations,omitempty"`
+	Bibliography []BibEntry    `json:"bibliography,omitempty"`
 }
 
 type Frame struct {
@@ -38,19 +45,20 @@ type Frame struct {
 type ContentType string
 
 const (
-	ContentRichText ContentType = "richtext"
-	ContentBlock    ContentType = "block"
-	ContentList     ContentType = "list"
-	ContentColumns  ContentType = "columns"
-	ContentColumn   ContentType = "column"
-	ContentImage    ContentType = "image"
-	ContentVerbatim ContentType = "verbatim"
-	ContentCode     ContentType = "code"
-	ContentTable    ContentType = "table"
-	ContentTableRow ContentType = "tablerow"
-	ContentTOC      ContentType = "toc"
-	ContentSpacer   ContentType = "spacer"
-	ContentQuote    ContentType = "quote"
+	ContentRichText     ContentType = "richtext"
+	ContentBlock        ContentType = "block"
+	ContentList         ContentType = "list"
+	ContentColumns      ContentType = "columns"
+	ContentColumn       ContentType = "column"
+	ContentImage        ContentType = "image"
+	ContentVerbatim     ContentType = "verbatim"
+	ContentCode         ContentType = "code"
+	ContentTable        ContentType = "table"
+	ContentTableRow     ContentType = "tablerow"
+	ContentTOC          ContentType = "toc"
+	ContentSpacer       ContentType = "spacer"
+	ContentQuote        ContentType = "quote"
+	ContentBibliography ContentType = "bibliography"
 )
 
 type InlineType string
@@ -63,6 +71,7 @@ const (
 	InlineAlert    InlineType = "alert"
 	InlineColored  InlineType = "colored"
 	InlineCitation InlineType = "citation"
+	InlineURL      InlineType = "url"
 )
 
 type InlineContent struct {
@@ -85,15 +94,24 @@ type Content struct {
 }
 
 type Parser struct {
-	l              *Lexer
-	curToken       Token
-	peekToken      Token
-	citationIndex  int
-	citationMap    map[string]int
+	l             *Lexer
+	lexerStack    []lexerFrame
+	baseDir       string
+	curToken      Token
+	peekToken     Token
+	citationIndex int
+	citationMap   map[string]int
+	citationKeys  []string
 }
 
-func NewParser(l *Lexer) *Parser {
-	p := &Parser{l: l, citationMap: make(map[string]int)}
+type lexerFrame struct {
+	l         *Lexer
+	curToken  Token
+	peekToken Token
+}
+
+func NewParser(l *Lexer, baseDir string) *Parser {
+	p := &Parser{l: l, baseDir: baseDir, citationMap: make(map[string]int)}
 	p.nextToken()
 	p.nextToken()
 	return p
@@ -101,6 +119,15 @@ func NewParser(l *Lexer) *Parser {
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
+	// When an included file ends, pop back to the parent lexer
+	if p.curToken.Type == TokenEOF && len(p.lexerStack) > 0 {
+		frame := p.lexerStack[len(p.lexerStack)-1]
+		p.lexerStack = p.lexerStack[:len(p.lexerStack)-1]
+		p.l = frame.l
+		p.curToken = frame.curToken
+		p.peekToken = frame.peekToken
+		return
+	}
 	p.peekToken = p.l.NextToken()
 }
 
@@ -110,7 +137,68 @@ func (p *Parser) citationRef(key string) string {
 	}
 	p.citationIndex++
 	p.citationMap[key] = p.citationIndex
+	p.citationKeys = append(p.citationKeys, key)
 	return strconv.Itoa(p.citationIndex)
+}
+
+// formatDate formats a time according to the presentation language.
+func formatDate(t time.Time, lang string) string {
+	if lang == "pt-BR" {
+		months := []string{
+			"janeiro", "fevereiro", "março", "abril", "maio", "junho",
+			"julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+		}
+		return fmt.Sprintf("%d de %s de %d", t.Day(), months[t.Month()-1], t.Year())
+	}
+	return t.Format("02/01/2006")
+}
+
+// includeFile pushes the current lexer state and switches to a new lexer for
+// the included file. The file is searched relative to baseDir and in a
+// templates/ subdirectory.
+func (p *Parser) includeFile(filename string) {
+	if filename == "" || len(p.lexerStack) >= 10 {
+		return
+	}
+	candidates := []string{
+		filepath.Join(p.baseDir, filename),
+		filepath.Join(p.baseDir, filename+".tex"),
+		filepath.Join(p.baseDir, "templates", filename),
+		filepath.Join(p.baseDir, "templates", filename+".tex"),
+	}
+	for _, candidate := range candidates {
+		data, err := os.ReadFile(candidate)
+		if err != nil {
+			continue
+		}
+		// Push current state so we can restore it when the include ends
+		p.lexerStack = append(p.lexerStack, lexerFrame{
+			l:         p.l,
+			curToken:  p.curToken,
+			peekToken: p.peekToken,
+		})
+		p.l = NewLexer(string(data))
+		p.curToken = p.l.NextToken()
+		p.peekToken = p.l.NextToken()
+		return
+	}
+}
+
+// parseOptionalArgString reads an optional [bracket argument] if present.
+func (p *Parser) parseOptionalArgString() string {
+	if p.curToken.Type != TokenOpenBracket {
+		return ""
+	}
+	p.nextToken()
+	var val strings.Builder
+	for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+		val.WriteString(p.curToken.Value)
+		p.nextToken()
+	}
+	if p.curToken.Type == TokenCloseBracket {
+		p.nextToken()
+	}
+	return val.String()
 }
 
 func overlayMaxStep(overlay string) int {
@@ -164,7 +252,7 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 			case "date":
 				d := p.parseRawArgument()
 				if d == "today" || d == "" {
-					pres.Date = time.Now().Format("02/01/2006")
+					pres.Date = formatDate(time.Now(), pres.Language)
 				} else {
 					pres.Date = d
 				}
@@ -179,6 +267,40 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 				})
 			case "subsection", "subsubsection":
 				_ = p.parseRawArgument()
+			case "usepackage":
+				p.nextToken() // skip \usepackage
+				opts := p.parseOptionalArgString()
+				pkg := ""
+				if p.curToken.Type == TokenOpenBrace {
+					p.nextToken()
+					var sb strings.Builder
+					for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
+						sb.WriteString(p.curToken.Value)
+						p.nextToken()
+					}
+					if p.curToken.Type == TokenCloseBrace {
+						p.nextToken()
+					}
+					pkg = strings.TrimSpace(sb.String())
+				}
+				if pkg != "" {
+					pres.Packages = append(pres.Packages, pkg)
+					switch pkg {
+					case "babel", "polyglossia":
+						if strings.Contains(opts, "brazil") || strings.Contains(opts, "portuguese") {
+							pres.Language = "pt-BR"
+						}
+					}
+				}
+			case "addbibresource", "bibliography":
+				resource := p.parseRawArgument()
+				if resource != "" {
+					pres.BibResources = append(pres.BibResources, resource)
+				}
+			case "input", "include", "subfile":
+				filename := p.parseRawArgument()
+				p.includeFile(filename)
+				continue
 			case "begin":
 				arg := p.parseRawArgument()
 				if arg == "frame" {
@@ -202,6 +324,15 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 			p.nextToken()
 		}
 	}
+
+	// Export ordered citation list
+	for _, key := range p.citationKeys {
+		pres.Citations = append(pres.Citations, CitationRef{
+			Key:   key,
+			Index: p.citationMap[key],
+		})
+	}
+
 	return pres, nil
 }
 
@@ -432,6 +563,9 @@ func (p *Parser) parseContent() (*Content, error) {
 				return p.parseTabular()
 			case "quote", "quotation", "verse":
 				return p.parseQuote(env)
+			case "thebibliography":
+				p.skipEnvironment("thebibliography")
+				return &Content{Type: ContentBibliography}, nil
 			default:
 				if env != "" {
 					p.skipEnvironment(env)
@@ -440,6 +574,29 @@ func (p *Parser) parseContent() (*Content, error) {
 			}
 		case "includegraphics":
 			return p.parseImage(), nil
+		case "printbibliography":
+			p.nextToken()
+			_ = p.parseOptionalArgString() // e.g. [title=References]
+			return &Content{Type: ContentBibliography}, nil
+		case "input", "include", "subfile":
+			filename := p.parseRawArgument()
+			p.includeFile(filename)
+			return nil, nil
+		case "inputminted":
+			lang := p.parseRawArgument()
+			path := p.parseRawArgument()
+			if p.baseDir != "" {
+				for _, candidate := range []string{
+					filepath.Join(p.baseDir, path),
+					filepath.Join(p.baseDir, "templates", path),
+				} {
+					data, err := os.ReadFile(candidate)
+					if err == nil {
+						return &Content{Type: ContentCode, Lang: strings.ToLower(lang), Title: string(data)}, nil
+					}
+				}
+			}
+			return nil, nil
 		case "only", "uncover", "visible":
 			p.nextToken()
 			overlay := p.parseOverlaySpecification()
@@ -521,12 +678,12 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			case "footcite", "cite", "autocite", "textcite", "parencite",
 				"citeauthor", "citeyear", "citetitle", "footnotemark":
 				arg := p.parseRawArgument()
-				ref := p.citationRef(arg)
-				elements = append(elements, InlineContent{Type: InlineCitation, Value: ref, Overlay: overlay})
+				p.citationRef(arg) // record order
+				elements = append(elements, InlineContent{Type: InlineCitation, Value: arg, Overlay: overlay})
 			case "footnote":
-				_ = p.parseRawArgument() // ignore footnote body
-				ref := p.citationRef("footnote")
-				elements = append(elements, InlineContent{Type: InlineCitation, Value: ref, Overlay: overlay})
+				_ = p.parseRawArgument()
+				p.citationRef("footnote")
+				elements = append(elements, InlineContent{Type: InlineCitation, Value: "footnote", Overlay: overlay})
 			case "textrm", "textsf", "texttt", "textnormal", "text", "mbox",
 				"textsc", "textup":
 				arg := p.parseRawArgument()
@@ -547,9 +704,27 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			case "textemdash":
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: "—"})
 			case "href":
-				_ = p.parseRawArgument() // url
+				url := p.parseRawArgument()
 				label := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: label})
+				elements = append(elements, InlineContent{Type: InlineURL, Value: label, Color: url, Overlay: overlay})
+			case "url", "nolinkurl":
+				link := p.parseRawArgument()
+				elements = append(elements, InlineContent{Type: InlineURL, Value: link, Color: link, Overlay: overlay})
+			case "enquote", "textquote":
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201C"})
+				if p.curToken.Type == TokenOpenBrace {
+					p.nextToken()
+					inner := p.parseInlineTokens(func() bool {
+						return p.curToken.Type == TokenEOF || p.curToken.Type == TokenCloseBrace
+					})
+					if p.curToken.Type == TokenCloseBrace {
+						p.nextToken()
+					}
+					elements = append(elements, inner...)
+				}
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201D"})
+			case "toprule", "midrule", "bottomrule", "hline":
+				// booktabs / standard table rules — silently skip
 			default:
 				// Unknown command with a brace argument: absorb the arg as text
 				if p.curToken.Type == TokenOpenBrace {
@@ -743,6 +918,9 @@ func (p *Parser) parseTabular() (*Content, error) {
 	rows := strings.Split(raw, `\\`)
 	for _, row := range rows {
 		row = strings.ReplaceAll(row, `\hline`, "")
+		for _, rule := range []string{`\toprule`, `\midrule`, `\bottomrule`} {
+			row = strings.ReplaceAll(row, rule, "")
+		}
 		row = strings.TrimSpace(row)
 		if row == "" {
 			continue

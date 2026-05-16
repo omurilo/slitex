@@ -18,9 +18,9 @@ const CHARCOAL = '#23373b';
 const ORANGE = '#eb811b';
 
 export const ThemeMetropolisFrame: React.FC<ThemeFrameProps> = ({
-  frame, slideIndex, totalSlides, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
+  frame, slideIndex, totaslitexs, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
 }) => {
-  const progress = ((slideIndex + 1) / totalSlides) * 100;
+  const progress = ((slideIndex + 1) / totaslitexs) * 100;
   const isTitleSlide = frame.titlePage || (!frame.title && !frame.subtitle);
 
   if (isTitleSlide) {
@@ -82,7 +82,7 @@ export const ThemeMetropolisFrame: React.FC<ThemeFrameProps> = ({
       {/* Footer */}
       <div style={{ backgroundColor: CHARCOAL, padding: '14px 64px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9cb5ba', fontSize: '13px', fontWeight: 500, flexShrink: 0 }}>
         <span>{presentationAuthor || presentationTitle}</span>
-        <span style={{ fontFamily: 'monospace', color: ORANGE }}>{slideIndex + 1} / {totalSlides}</span>
+        <span style={{ fontFamily: 'monospace', color: ORANGE }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
 
       {/* Orange progress bar */}

@@ -5,9 +5,9 @@ interface SlideState {
   currentStep: number;
 }
 
-export function useSyncSlides(initialSlide = 0) {
+export function useSyncSlides(initiaslitex = 0) {
   const [state, setState] = useState<SlideState>({
-    currentSlide: initialSlide,
+    currentSlide: initiaslitex,
     currentStep: 1,
   });
   const stateRef = useRef(state);
