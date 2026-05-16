@@ -1,0 +1,39 @@
+/* --- TEMA DEFAULT (MINIMALISTA) --- */
+[data-theme="default"] {
+  --theme-bg: #ffffff;
+  --theme-text: #0f172a;
+  --theme-primary: #4f46e5;
+  --theme-block-bg: #f8fafc;
+  --theme-font: 'Inter', sans-serif;
+}
+
+/* --- TEMA METROPOLIS --- */
+[data-theme="metropolis"] {
+  --theme-bg: #fafafa;
+  --theme-text: #2d3748;
+  --theme-primary: #eb811b; /* Laranja clássico do Metropolis */
+  --theme-block-bg: #eaeaea;
+  --theme-font: 'Fira Sans', sans-serif;
+}
+[data-theme="metropolis"] .slide-header {
+  background-color: #23373b; /* Tom cinza-azulado escuro */
+  color: #eb811b;
+  padding: 1.5rem;
+}
+[data-theme="metropolis"] .slide-footer {
+  background-color: #bcbcbc;
+  color: #23373b;
+}
+
+/* --- TEMA MADRID (ACADÊMICO) --- */
+[data-theme="madrid"] {
+  --theme-bg: #ffffff;
+  --theme-text: #000000;
+  --theme-primary: #104f55;
+  --theme-block-bg: #f0f7f4;
+  --theme-font: 'CMU Serif', Times, serif;
+}
+[data-theme="madrid"] .slide-header {
+  background: linear-gradient(90deg, #104f55 0%, #32746d 100%);
+  color: white;
+}

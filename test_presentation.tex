@@ -1,0 +1,24 @@
+\title{Slides Avançados com Beamer}
+\author{Platform Engineer}
+
+\begin{frame}{Layout com Múltiplas Colunas}{Uso Prático de Imagens e Animações}
+    Texto introdutório que sempre fica visível.
+
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \begin{block}<1->{Lado Esquerdo}
+                Este bloco aparece logo no primeiro clique.
+            \end{block}
+            
+            \begin{itemize}
+                \item<2-> Este item só surge no segundo clique.
+                \item<3-> Este termo ganha destaque em \textbf<3>{negrito temporário}.
+            \end{itemize}
+        \end{column}
+
+        \begin{column}{0.5\textwidth}
+            Aqui colocamos uma imagem de arquitetura técnica:
+            \includegraphics[width=\textwidth]{assets/diagrama.png}
+        \end{column}
+    \end{columns}
+\end{frame}
