@@ -6,6 +6,7 @@ import { ViewPresenter } from './views/ViewPresenter';
 import { ViewProjector } from './views/ViewProjector';
 import { ViewOverview } from './views/ViewOverview';
 import { ViewPrint } from './views/ViewPrint';
+import { SyncProvider } from './contexts/SyncContext';
 import './theme.css';
 
 function useExternalTheme(themeName: string) {
@@ -75,15 +76,6 @@ function App() {
     };
 
     fetchAST();
-
-    const source = new EventSource('/api/live');
-    source.onmessage = (event) => {
-      if (event.data === 'reload') {
-        fetchAST();
-      }
-    };
-
-    return () => source.close();
   }, []);
 
   if (error) {
@@ -108,11 +100,11 @@ function App() {
     );
   }
 
-  if (path === '/presenter') return <ViewPresenter ast={ast} initiaslitex={initiaslitex} />;
-  if (path === '/projector') return <ViewProjector ast={ast} initiaslitex={initiaslitex} />;
-  if (path === '/overview') return <ViewOverview ast={ast} />;
+  if (path === '/presenter') return <SyncProvider initialSlide={initiaslitex}><ViewPresenter ast={ast} initiaslitex={initiaslitex} /></SyncProvider>;
+  if (path === '/projector') return <SyncProvider initialSlide={initiaslitex}><ViewProjector ast={ast} initiaslitex={initiaslitex} /></SyncProvider>;
+  if (path === '/overview') return <SyncProvider><ViewOverview ast={ast} /></SyncProvider>;
   if (path === '/print') return <ViewPrint ast={ast} />;
-  return <ViewLanding ast={ast} />;
+  return <SyncProvider initialSlide={initiaslitex}><ViewLanding ast={ast} /></SyncProvider>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

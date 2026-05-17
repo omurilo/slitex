@@ -90,7 +90,7 @@ export const ViewLanding: React.FC<LandingProps> = ({ ast }) => {
       
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px 28px' }}>
         <div style={{ width: '100%', maxWidth: 960, aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 48px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <ViewProjector ast={ast} />
+          <ViewProjector ast={ast} embedded />
         </div>
 
         

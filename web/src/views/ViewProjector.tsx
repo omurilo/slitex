@@ -8,6 +8,7 @@ import { PresentationContext, usePresentationContextValue } from '../contexts/Pr
 interface ProjectorProps {
   ast: PresentationAST;
   initiaslitex?: number;
+  embedded?: boolean;
 }
 
 const SLIDE_ASPECT = 16 / 9;
@@ -71,7 +72,7 @@ const SlideCanvas: React.FC<{
   );
 };
 
-export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 }) => {
+export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0, embedded = false }) => {
   const { currentSlide, currentStep, updateState } = useSyncSlides(initiaslitex);
   const [showOverview, setShowOverview] = useState(false);
   const frames = ast.frames || [];
@@ -97,6 +98,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
   }, [currentSlide, currentStep, updateState]);
 
   useEffect(() => {
+    if (embedded) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (showOverview && e.key === 'Escape') { setShowOverview(false); return; }
       switch (e.key) {
@@ -118,7 +120,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSlide, currentStep, frames.length, handleNext, handlePrev, showOverview, updateState]);
+  }, [embedded, currentSlide, currentStep, frames.length, handleNext, handlePrev, showOverview, updateState]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -175,19 +177,19 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
     </FrameComponent>
   );
 
+  const touchHandlers = embedded ? {} : { onTouchStart: handleTouchStart, onTouchEnd: handleTouchEnd };
+
   return (
     <PresentationContext.Provider value={ctxValue}>
     <div
       className="w-full h-full overflow-hidden relative"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      {...touchHandlers}
     >
       <SlideCanvas slideIndex={currentSlide}>
         {frameContent}
       </SlideCanvas>
 
-      
-      {showOverview && (
+      {!embedded && showOverview && (
         <div
           className="fixed inset-0 bg-black/85 z-50 overflow-auto p-8"
           onClick={() => setShowOverview(false)}

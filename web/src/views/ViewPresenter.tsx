@@ -119,7 +119,7 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>Projetor ativo</span>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
             <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <ViewProjector ast={ast} />
+              <ViewProjector ast={ast} embedded />
             </div>
           </div>
         </div>

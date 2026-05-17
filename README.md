@@ -84,7 +84,7 @@ slitex [flags] <presentation.tex>
 slitex my_talk.tex
 
 # Use a custom port
-slitex -port 8080 my_talk.tex
+slitex -port 3000 my_talk.tex
 ```
 
 The browser opens automatically at `http://localhost:3000`.
