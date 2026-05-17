@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 interface SyncState {
   currentSlide: number;
@@ -17,8 +17,6 @@ const SyncContext = createContext<SyncContextValue>({
 
 export function SyncProvider({ children, initialSlide = 0 }: { children: ReactNode; initialSlide?: number }) {
   const [state, setState] = useState<SyncState>({ currentSlide: initialSlide, currentStep: 1 });
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
   useEffect(() => {
     const source = new EventSource('/api/live');
@@ -34,7 +32,7 @@ export function SyncProvider({ children, initialSlide = 0 }: { children: ReactNo
         if (msg.type === 'sync') {
           setState({ currentSlide: msg.slide, currentStep: msg.step });
         }
-      } catch {}
+      } catch { /* ignore */ }
     };
 
     return () => source.close();
@@ -56,6 +54,7 @@ export function SyncProvider({ children, initialSlide = 0 }: { children: ReactNo
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useSyncContext() {
   return useContext(SyncContext);
 }

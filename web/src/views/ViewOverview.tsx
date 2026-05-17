@@ -8,7 +8,7 @@ interface OverviewProps {
 }
 
 export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
-  const { currentSlide, updateState } = useSyncSlides(0);
+  const { currentSlide, updateState } = useSyncSlides();
   const frames = ast.frames || [];
 
   const handleSelect = (index: number) => {

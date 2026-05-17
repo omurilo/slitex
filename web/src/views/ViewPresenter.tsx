@@ -5,11 +5,10 @@ import { ViewProjector } from './ViewProjector';
 
 interface PresenterProps {
   ast: PresentationAST;
-  initiaslitex?: number;
 }
 
-export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 }) => {
-  const { currentSlide, currentStep, updateState } = useSyncSlides(initiaslitex);
+export const ViewPresenter: React.FC<PresenterProps> = ({ ast }) => {
+  const { currentSlide, currentStep, updateState } = useSyncSlides();
   const [seconds, setSeconds] = useState(0);
   const touchStartX = useRef(0);
 

@@ -9,9 +9,9 @@ import { ViewPrint } from './views/ViewPrint';
 import { SyncProvider } from './contexts/SyncContext';
 import './theme.css';
 
-function useExternalTheme(themeName: string) {
-  const nativeThemes = ['default', 'metropolis', 'madrid'];
+const nativeThemes = ['default', 'metropolis', 'madrid'];
 
+function useExternalTheme(themeName: string) {
   useEffect(() => {
     if (!themeName || nativeThemes.includes(themeName)) return;
 
@@ -128,6 +128,7 @@ function getInitiaslitex(): number {
   return slide ? Math.max(0, parseInt(slide, 10) - 1) : 0;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 function App() {
   const [ast, setAst] = useState<PresentationAST | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +184,8 @@ function App() {
     );
   }
 
-  if (path === '/presenter') return <SyncProvider initialSlide={initiaslitex}><ViewPresenter ast={ast} initiaslitex={initiaslitex} /></SyncProvider>;
-  if (path === '/projector') return <SyncProvider initialSlide={initiaslitex}><ViewProjector ast={ast} initiaslitex={initiaslitex} /></SyncProvider>;
+  if (path === '/presenter') return <SyncProvider initialSlide={initiaslitex}><ViewPresenter ast={ast} /></SyncProvider>;
+  if (path === '/projector') return <SyncProvider initialSlide={initiaslitex}><ViewProjector ast={ast} /></SyncProvider>;
   if (path === '/overview') return <SyncProvider><ViewOverview ast={ast} /></SyncProvider>;
   if (path === '/print') return <ViewPrint ast={ast} />;
   return <SyncProvider initialSlide={initiaslitex}><ViewLanding ast={ast} /></SyncProvider>;

@@ -31,6 +31,7 @@ export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }
   }, []);
 
   const BuiltinFrame = builtinThemes[ast.theme] ?? builtinThemes['default'];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ExternalTheme = (window as any).slitexThemes?.[ast.theme];
   const FrameComponent = ExternalTheme?.Frame ?? BuiltinFrame;
 

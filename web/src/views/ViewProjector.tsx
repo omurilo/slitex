@@ -7,7 +7,6 @@ import { PresentationContext, usePresentationContextValue } from '../contexts/Pr
 
 interface ProjectorProps {
   ast: PresentationAST;
-  initiaslitex?: number;
   embedded?: boolean;
 }
 
@@ -72,8 +71,8 @@ const SlideCanvas: React.FC<{
   );
 };
 
-export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0, embedded = false }) => {
-  const { currentSlide, currentStep, updateState } = useSyncSlides(initiaslitex);
+export const ViewProjector: React.FC<ProjectorProps> = ({ ast, embedded = false }) => {
+  const { currentSlide, currentStep, updateState } = useSyncSlides();
   const [showOverview, setShowOverview] = useState(false);
   const frames = ast.frames || [];
   const activeFrame = frames[currentSlide];
@@ -136,18 +135,6 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0,
     }
   };
 
-  if (!activeFrame) {
-    return (
-      <div className="w-full h-full bg-slate-950 flex justify-center items-center text-slate-500 font-mono">
-        Aguardando frames...
-      </div>
-    );
-  }
-
-  const BuiltinFrame = builtinThemes[ast.theme] ?? builtinThemes['default'];
-  const ExternalTheme = (window as any).slitexThemes?.[ast.theme];
-  const FrameComponent = ExternalTheme?.Frame ?? BuiltinFrame;
-
   const ctxValue = usePresentationContextValue(
     ast.sections ?? [],
     ast.title,
@@ -159,6 +146,19 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0,
     ast.citations ?? [],
     ast.macros ?? {},
   );
+
+  if (!activeFrame) {
+    return (
+      <div className="w-full h-full bg-slate-950 flex justify-center items-center text-slate-500 font-mono">
+        Aguardando frames...
+      </div>
+    );
+  }
+
+  const BuiltinFrame = builtinThemes[ast.theme] ?? builtinThemes['default'];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ExternalTheme = (window as any).slitexThemes?.[ast.theme];
+  const FrameComponent = ExternalTheme?.Frame ?? BuiltinFrame;
 
   const frameContent = (
     <FrameComponent
