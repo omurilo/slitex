@@ -56,10 +56,12 @@ export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }
       {/* Container: fills parent width, height derived from 16:9 */}
       <div
         ref={containerRef}
+        className="slide-thumb-outer"
         style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden', position: 'relative', background: '#000' }}
       >
         {scale > 0 && (
           <div
+            className="slide-thumb-inner"
             style={{
               width: DESIGN_W,
               height: DESIGN_H,

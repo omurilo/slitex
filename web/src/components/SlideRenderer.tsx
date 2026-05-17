@@ -88,6 +88,17 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
             </a>
           );
         }
+        case 'code':
+          return (
+            <code key={i} style={{
+              fontFamily: "'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+              background: 'rgba(0,0,0,0.12)',
+              borderRadius: '0.2em',
+              padding: '0.05em 0.3em',
+              fontSize: el.size ? `calc(${el.size} * 0.9)` : '0.88em',
+              ...sizeStyle,
+            }}>{el.value}</code>
+          );
         default:
           return <span key={i} style={sizeStyle}>{el.value}</span>;
       }

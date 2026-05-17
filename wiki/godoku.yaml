@@ -1,0 +1,35 @@
+title: slitex
+description: A LaTeX Beamer-compatible presentation tool powered by Go and React.
+url: https://omurilo.github.io/slitex
+language: pt-BR
+redirect: /docs/getting-started
+
+navigation:
+  - label: Documentação
+    path: /docs
+  - label: Referência
+    path: /reference
+
+sections:
+  docs: content/docs
+  reference: content/reference
+
+footer:
+  position: center
+  copyright: "© 2026 slitex. Feito com ❤️ em Go e React."
+  columns:
+    - title: Produto
+      links:
+        - label: Documentação
+          href: /docs/getting-started
+        - label: Referência LaTeX
+          href: /reference/latex-commands
+        - label: Temas
+          href: /docs/themes/builtin
+    - title: Comunidade
+      links:
+        - label: GitHub
+          href: https://github.com/omurilo/slitex
+  social:
+    - icon: github
+      href: https://github.com/omurilo/slitex

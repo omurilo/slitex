@@ -74,6 +74,7 @@ const (
 	InlineColored  InlineType = "colored"
 	InlineCitation InlineType = "citation"
 	InlineURL      InlineType = "url"
+	InlineCode     InlineType = "code"
 )
 
 type InlineContent struct {
@@ -111,16 +112,24 @@ type Content struct {
 	Centered bool            `json:"centered,omitempty"`
 }
 
+type customCodeEnvInfo struct {
+	nargs int
+	lang  string
+}
+
 type Parser struct {
-	l             *Lexer
-	lexerStack    []lexerFrame
-	baseDir       string
-	graphicPaths  []string
-	curToken      Token
-	peekToken     Token
-	citationIndex int
-	citationMap   map[string]int
-	citationKeys  []string
+	l              *Lexer
+	lexerStack     []lexerFrame
+	baseDir        string
+	graphicPaths   []string
+	curToken       Token
+	peekToken      Token
+	citationIndex  int
+	citationMap    map[string]int
+	citationKeys   []string
+	namedColors    map[string]string
+	lstStyles      map[string]string
+	customCodeEnvs map[string]customCodeEnvInfo
 }
 
 type lexerFrame struct {
@@ -323,6 +332,92 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				}
 			case "graphicspath":
 				p.parseGraphicsPaths()
+				continue
+			case "definecolor":
+				// \definecolor{name}{model}{value}
+				p.nextToken()
+				name := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				model := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				value := strings.TrimSpace(p.parseRawArgument())
+				if p.namedColors == nil {
+					p.namedColors = make(map[string]string)
+				}
+				switch model {
+				case "html":
+					p.namedColors[name] = "#" + strings.ToLower(value)
+				case "rgb":
+					parts := strings.Split(value, ",")
+					if len(parts) == 3 {
+						var rgbVals [3]int
+						allOk := true
+						for i, part := range parts {
+							f, err := strconv.ParseFloat(strings.TrimSpace(part), 64)
+							if err != nil {
+								allOk = false
+								break
+							}
+							rgbVals[i] = int(f * 255)
+						}
+						if allOk {
+							p.namedColors[name] = fmt.Sprintf("rgb(%d,%d,%d)", rgbVals[0], rgbVals[1], rgbVals[2])
+						}
+					}
+				}
+				continue
+			case "colorlet":
+				// \colorlet{newname}{existingname}
+				p.nextToken()
+				newName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				// Skip optional [model] if present
+				_ = p.parseOptionalArgString()
+				otherName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				if p.namedColors != nil {
+					if c, ok := p.namedColors[otherName]; ok {
+						p.namedColors[newName] = c
+					}
+				}
+				continue
+			case "lstdefinestyle", "lstdefinelanguage":
+				// \lstdefinestyle{name}{options} — extract language hint
+				p.nextToken()
+				name := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				opts := p.readBraceGroupRaw()
+				lang := extractLstOption(opts, "language")
+				if lang != "" {
+					if p.lstStyles == nil {
+						p.lstStyles = make(map[string]string)
+					}
+					p.lstStyles[name] = strings.ToLower(lang)
+				}
+				continue
+			case "newtcblisting", "lstnewenvironment", "newtcbinputlisting":
+				// \newtcblisting{envName}[nargs]{options}
+				p.nextToken()
+				envName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
+				nargs := 0
+				if p.curToken.Type == TokenOpenBracket {
+					nb := p.parseOptionalArgString()
+					nargs, _ = strconv.Atoi(strings.TrimSpace(nb))
+				}
+				// Read all remaining brace groups (may be 1 or more for begin/end defs)
+				var allOpts strings.Builder
+				for p.curToken.Type == TokenOpenBrace {
+					allOpts.WriteString(p.readBraceGroupRaw())
+					allOpts.WriteByte(' ')
+				}
+				opts := allOpts.String()
+				lang := extractLstOption(opts, "language")
+				if lang == "" {
+					// Try via style= lookup in listing options
+					styleName := strings.ToLower(extractLstOption(opts, "style"))
+					if styleName != "" && p.lstStyles != nil {
+						lang = p.lstStyles[styleName]
+					}
+				}
+				if p.customCodeEnvs == nil {
+					p.customCodeEnvs = make(map[string]customCodeEnvInfo)
+				}
+				p.customCodeEnvs[envName] = customCodeEnvInfo{nargs: nargs, lang: strings.ToLower(lang)}
 				continue
 			case "addbibresource", "bibliography":
 				resource := p.parseRawArgument()
@@ -726,6 +821,11 @@ func (p *Parser) parseContent() (*Content, error) {
 				return &Content{Type: ContentBibliography}, nil
 			default:
 				if env != "" {
+					if p.customCodeEnvs != nil {
+						if cce, ok := p.customCodeEnvs[strings.ToLower(env)]; ok {
+							return p.parseCustomCodeBlock(env, cce)
+						}
+					}
 					p.skipEnvironment(env)
 				}
 				return nil, nil
@@ -864,6 +964,11 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			case "textcolor":
 				color := p.parseRawArgument()
 				text := p.parseRawArgument()
+				if p.namedColors != nil {
+					if resolved, ok := p.namedColors[strings.ToLower(color)]; ok {
+						color = resolved
+					}
+				}
 				elements = append(elements, InlineContent{Type: InlineColored, Color: color, Value: text, Overlay: overlay, Size: currentFontSize})
 			case "footcite", "cite", "autocite", "textcite", "parencite",
 				"citeauthor", "citeyear", "citetitle", "footnotemark":
@@ -874,7 +979,10 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 				_ = p.parseRawArgument()
 				p.citationRef("footnote")
 				elements = append(elements, InlineContent{Type: InlineCitation, Value: "footnote", Overlay: overlay})
-			case "textrm", "textsf", "texttt", "textnormal", "text", "mbox",
+			case "texttt":
+				arg := strings.Trim(p.parseRawArgument(), "`")
+				elements = append(elements, InlineContent{Type: InlineCode, Value: arg, Overlay: overlay, Size: currentFontSize})
+			case "textrm", "textsf", "textnormal", "text", "mbox",
 				"textsc", "textup":
 				arg := p.parseRawArgument()
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Overlay: overlay, Size: currentFontSize})
@@ -1215,6 +1323,61 @@ func (p *Parser) parseOverlayEnv(envName string) (*Content, error) {
 	return container, nil
 }
 
+// readBraceGroupRaw reads a {brace-group} with depth-tracking on the token
+// stream and returns the raw concatenated content (without the outer braces).
+// Unlike parseRawArgument it correctly handles nested {}.
+func (p *Parser) readBraceGroupRaw() string {
+	if p.curToken.Type != TokenOpenBrace {
+		return ""
+	}
+	p.nextToken() // consume opening {
+	var sb strings.Builder
+	depth := 1
+	for depth > 0 && p.curToken.Type != TokenEOF {
+		switch p.curToken.Type {
+		case TokenOpenBrace:
+			depth++
+			sb.WriteByte('{')
+			p.nextToken()
+		case TokenCloseBrace:
+			depth--
+			if depth > 0 {
+				sb.WriteByte('}')
+			}
+			p.nextToken()
+		case TokenCommand:
+			sb.WriteByte('\\')
+			sb.WriteString(p.curToken.Value)
+			p.nextToken()
+		default:
+			sb.WriteString(p.curToken.Value)
+			p.nextToken()
+		}
+	}
+	return sb.String()
+}
+
+// extractLstOption searches opts for key=value or key={value} and returns
+// the trimmed value, or "" when not found.
+func extractLstOption(opts, key string) string {
+	idx := strings.Index(opts, key+"=")
+	if idx == -1 {
+		return ""
+	}
+	after := strings.TrimSpace(opts[idx+len(key)+1:])
+	if strings.HasPrefix(after, "{") {
+		end := strings.Index(after[1:], "}")
+		if end >= 0 {
+			return strings.TrimSpace(after[1 : end+1])
+		}
+	}
+	end := strings.IndexAny(after, ",\n}")
+	if end == -1 {
+		return strings.TrimSpace(after)
+	}
+	return strings.TrimSpace(after[:end])
+}
+
 // tokenRaw reconstructs the approximate raw LaTeX source for a single token.
 // Used to recover lookahead tokens that were consumed before a raw-read.
 func tokenRaw(t Token) string {
@@ -1243,6 +1406,53 @@ func tokenRaw(t Token) string {
 	default:
 		return t.Value
 	}
+}
+
+// parseCustomCodeBlock handles a user-defined verbatim-listing environment
+// registered via \newtcblisting or \lstnewenvironment.
+// If the env declares nargs > 0 the first argument is used as the block title.
+func (p *Parser) parseCustomCodeBlock(envName string, cce customCodeEnvInfo) (*Content, error) {
+	title := ""
+	if cce.nargs > 0 {
+		title = strings.TrimSpace(p.parseRawArgument())
+		for i := 1; i < cce.nargs; i++ {
+			_ = p.parseRawArgument()
+		}
+	}
+	endMarker := fmt.Sprintf(`\end{%s}`, envName)
+	// After parsing the title arg the 2-token lookahead may have consumed part of
+	// the end marker.  The typical case: readText() swallows the entire code body
+	// as one token (curToken), then \end becomes peekToken, leaving the raw buffer
+	// positioned right at {envName}.  Detect this split and handle it correctly.
+	var codeContent string
+	closingArg := "{" + envName + "}"
+	if p.peekToken.Type == TokenCommand && p.peekToken.Value == "end" &&
+		strings.HasPrefix(p.l.PeekRaw(len(closingArg)), closingArg) {
+		// Split case: \end is in the lookahead, {envName} is at the raw head.
+		codeContent = tokenRaw(p.curToken)
+		_ = p.l.ReadRawUntil(closingArg) // consumes "{envName}" from raw buffer
+	} else {
+		// Normal case: the end marker is entirely in the raw buffer (or the code
+		// body is split across multiple tokens, so we need to prepend the prefix).
+		prefix := tokenRaw(p.curToken) + tokenRaw(p.peekToken)
+		rawPart := p.l.ReadRawUntil(endMarker)
+		codeContent = prefix + rawPart
+	}
+	p.curToken = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
+	codeNode := &Content{
+		Type:  ContentCode,
+		Lang:  cce.lang,
+		Title: strings.TrimLeft(codeContent, "\n\r"),
+	}
+	if title != "" {
+		return &Content{
+			Type:     ContentBlock,
+			Title:    title,
+			Children: []Content{*codeNode},
+		}, nil
+	}
+	return codeNode, nil
 }
 
 func (p *Parser) parseVerbatim() (*Content, error) {
@@ -1283,10 +1493,21 @@ func (p *Parser) parseLstlisting(envName string) (*Content, error) {
 		lang = p.parseRawArgument()
 	}
 	endMarker := fmt.Sprintf(`\end{%s}`, envName)
-	raw := p.l.ReadRawUntil(endMarker)
+	// Apply the same split-marker detection used by parseCustomCodeBlock.
+	var codeContent string
+	closingArg := "{" + envName + "}"
+	if p.peekToken.Type == TokenCommand && p.peekToken.Value == "end" &&
+		strings.HasPrefix(p.l.PeekRaw(len(closingArg)), closingArg) {
+		codeContent = tokenRaw(p.curToken)
+		_ = p.l.ReadRawUntil(closingArg)
+	} else {
+		prefix := tokenRaw(p.curToken) + tokenRaw(p.peekToken)
+		rawPart := p.l.ReadRawUntil(endMarker)
+		codeContent = prefix + rawPart
+	}
 	p.curToken = p.l.NextToken()
 	p.peekToken = p.l.NextToken()
-	return &Content{Type: ContentCode, Lang: strings.ToLower(lang), Title: strings.TrimLeft(raw, "\n\r")}, nil
+	return &Content{Type: ContentCode, Lang: strings.ToLower(lang), Title: strings.TrimLeft(codeContent, "\n\r")}, nil
 }
 
 func (p *Parser) parseTabular() (*Content, error) {

@@ -184,6 +184,17 @@ func isLetter(ch byte) bool {
 	return unicode.IsLetter(rune(ch))
 }
 
+// PeekRaw returns the next n raw bytes from the current lexer position
+// without consuming them. Used to detect split end-markers across the
+// token-lookahead boundary.
+func (l *Lexer) PeekRaw(n int) string {
+	end := l.position + n
+	if end > len(l.input) {
+		end = len(l.input)
+	}
+	return l.input[l.position:end]
+}
+
 // ReadRawUntil reads raw text until endMarker is found,
 // returning content before the marker and advancing past it.
 func (l *Lexer) ReadRawUntil(endMarker string) string {

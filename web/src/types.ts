@@ -1,4 +1,4 @@
-export type InlineType = 'text' | 'bold' | 'italic' | 'math' | 'alert' | 'colored' | 'citation' | 'url';
+export type InlineType = 'text' | 'bold' | 'italic' | 'math' | 'alert' | 'colored' | 'citation' | 'url' | 'code';
 
 export interface InlineContent {
   type: InlineType;
