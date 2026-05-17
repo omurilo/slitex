@@ -157,6 +157,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0,
     ast.date ?? '',
     ast.bibliography ?? [],
     ast.citations ?? [],
+    ast.macros ?? {},
   );
 
   const frameContent = (

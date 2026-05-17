@@ -40,6 +40,88 @@ function useExternalTheme(themeName: string) {
   }, [themeName]);
 }
 
+const KNOWN_CDN_PACKAGES: Record<string, string> = {
+  'fontawesome':       'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+  'fontawesome5':      'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+  'fontawesome-free':  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+};
+
+const KATEX_EXTENSIONS: Record<string, () => Promise<unknown>> = {
+  'mhchem':    () => import('katex/contrib/mhchem' as string),
+  'copy-tex':  () => import('katex/contrib/copy-tex' as string),
+};
+
+interface FontPackage { googleFontsUrl?: string; fontFamily: string }
+const FONT_PACKAGES: Record<string, FontPackage> = {
+  'palatino':      { fontFamily: "'Palatino Linotype', 'Book Antiqua', Palatino, serif" },
+  'mathpazo':      { fontFamily: "'Palatino Linotype', 'Book Antiqua', Palatino, serif" },
+  'newpxtext':     { fontFamily: "'Palatino Linotype', 'Book Antiqua', Palatino, serif" },
+  'times':         { fontFamily: "'Times New Roman', Times, serif" },
+  'mathptmx':      { fontFamily: "'Times New Roman', Times, serif" },
+  'newtxtext':     { fontFamily: "'Times New Roman', Times, serif" },
+  'helvet':        { fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
+  'lmodern':       { fontFamily: "'Latin Modern Roman', Georgia, serif" },
+  'courier':       { fontFamily: "'Courier New', Courier, monospace" },
+  'opensans':      { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap', fontFamily: "'Open Sans', sans-serif" },
+  'sourcesanspro': { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700&display=swap', fontFamily: "'Source Sans 3', 'Source Sans Pro', sans-serif" },
+  'roboto':        { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap', fontFamily: "'Roboto', sans-serif" },
+  'firasans':      { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Fira+Sans:wght@300;400;600;700&display=swap', fontFamily: "'Fira Sans', sans-serif" },
+  'lato':          { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap', fontFamily: "'Lato', sans-serif" },
+  'montserrat':    { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap', fontFamily: "'Montserrat', sans-serif" },
+  'nunito':        { googleFontsUrl: 'https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap', fontFamily: "'Nunito', sans-serif" },
+};
+
+function usePackages(packages: string[]) {
+  useEffect(() => {
+    if (!packages.length) return;
+
+    let resolvedFont: FontPackage | null = null;
+
+    for (const pkg of packages) {
+      const key = pkg.toLowerCase();
+
+      const cdnUrl = KNOWN_CDN_PACKAGES[key];
+      if (cdnUrl) {
+        const id = `pkg-css-${key}`;
+        if (!document.getElementById(id)) {
+          const link = document.createElement('link');
+          link.id = id;
+          link.rel = 'stylesheet';
+          link.href = cdnUrl;
+          document.head.appendChild(link);
+        }
+      }
+
+      const ext = KATEX_EXTENSIONS[key];
+      if (ext) ext();
+
+      const font = FONT_PACKAGES[key];
+      if (font) resolvedFont = font;
+    }
+
+    if (resolvedFont) {
+      if (resolvedFont.googleFontsUrl) {
+        const id = `pkg-gf-${resolvedFont.fontFamily.split(',')[0].replace(/[^a-z]/gi, '')}`;
+        if (!document.getElementById(id)) {
+          const link = document.createElement('link');
+          link.id = id;
+          link.rel = 'stylesheet';
+          link.href = resolvedFont.googleFontsUrl;
+          document.head.appendChild(link);
+        }
+      }
+      const styleId = 'slitex-font-override';
+      let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = `.slide-canvas { font-family: ${resolvedFont.fontFamily} !important; }`;
+    }
+  }, [packages]);
+}
+
 function getInitiaslitex(): number {
   const params = new URLSearchParams(window.location.search);
   const slide = params.get('slide');
@@ -53,6 +135,7 @@ function App() {
   const initiaslitex = getInitiaslitex();
 
   useExternalTheme(ast?.theme ?? '');
+  usePackages(ast?.packages ?? []);
 
   useEffect(() => {
     const fetchAST = async () => {

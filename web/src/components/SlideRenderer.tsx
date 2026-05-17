@@ -22,7 +22,7 @@ const CODE_BG  = () => cv('--slide-code-bg', '#0f172a');
 const CODE_TXT = () => cv('--slide-code-text', '#e2e8f0');
 
 export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) => {
-  const { sections, citationNumber, bibEntry, citations, bibliography } = usePresentationContext();
+  const { sections, citationNumber, bibEntry, citations, bibliography, macros } = usePresentationContext();
   const shouldShow = (overlayStr?: string): boolean => {
     if (!overlayStr) return true;
     const rangeMatch = overlayStr.match(/^(\d+)-(\d+)$/);
@@ -54,10 +54,10 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           const isDisplay = raw.startsWith('\\begin') || raw.includes('\n') || raw.length > 40;
           return isDisplay
             ? <div key={i} style={{ margin: '0.4em 0', textAlign: 'center', ...sizeStyle }}>
-                <TeX math={raw} errorColor="#cc0000" />
+                <TeX math={raw} settings={{ macros }} errorColor="#cc0000" />
               </div>
             : <span key={i} style={{ margin: '0 0.1em', display: 'inline-block', ...sizeStyle }}>
-                <TeX math={raw} errorColor="#cc0000" />
+                <TeX math={raw} settings={{ macros }} errorColor="#cc0000" />
               </span>;
         }
         case 'citation': {

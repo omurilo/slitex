@@ -85,6 +85,7 @@ export interface PresentationAST {
   theme: string;
   language?: string;
   packages?: string[];
+  macros?: Record<string, string>;
   sections: Section[];
   frames: Frame[];
   bibResources?: string[];

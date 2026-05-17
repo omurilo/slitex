@@ -17,19 +17,20 @@ type Section struct {
 }
 
 type Presentation struct {
-	Title        string        `json:"title"`
-	Subtitle     string        `json:"subtitle,omitempty"`
-	Author       string        `json:"author"`
-	Institute    string        `json:"institute,omitempty"`
-	Date         string        `json:"date,omitempty"`
-	Theme        string        `json:"theme"`
-	Language     string        `json:"language,omitempty"`
-	Packages     []string      `json:"packages,omitempty"`
-	Sections     []Section     `json:"sections"`
-	Frames       []Frame       `json:"frames"`
-	BibResources []string      `json:"bibResources,omitempty"`
-	Citations    []CitationRef `json:"citations,omitempty"`
-	Bibliography []BibEntry    `json:"bibliography,omitempty"`
+	Title        string            `json:"title"`
+	Subtitle     string            `json:"subtitle,omitempty"`
+	Author       string            `json:"author"`
+	Institute    string            `json:"institute,omitempty"`
+	Date         string            `json:"date,omitempty"`
+	Theme        string            `json:"theme"`
+	Language     string            `json:"language,omitempty"`
+	Packages     []string          `json:"packages,omitempty"`
+	Macros       map[string]string `json:"macros,omitempty"`
+	Sections     []Section         `json:"sections"`
+	Frames       []Frame           `json:"frames"`
+	BibResources []string          `json:"bibResources,omitempty"`
+	Citations    []CitationRef     `json:"citations,omitempty"`
+	Bibliography []BibEntry        `json:"bibliography,omitempty"`
 }
 
 type Frame struct {
@@ -401,6 +402,42 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 					p.customCodeEnvs = make(map[string]customCodeEnvInfo)
 				}
 				p.customCodeEnvs[envName] = customCodeEnvInfo{nargs: nargs, lang: strings.ToLower(lang)}
+				continue
+			case "newcommand", "renewcommand", "providecommand":
+				p.nextToken()
+				if p.curToken.Type == TokenText && strings.TrimSpace(p.curToken.Value) == "*" {
+					p.nextToken()
+				}
+				nameRaw := strings.TrimPrefix(strings.TrimSpace(p.readBraceGroupRaw()), "\\")
+				_ = p.parseOptionalArgString()
+				_ = p.parseOptionalArgString()
+				def := p.readBraceGroupRaw()
+				if nameRaw != "" {
+					if pres.Macros == nil {
+						pres.Macros = make(map[string]string)
+					}
+					pres.Macros["\\"+nameRaw] = def
+				}
+				continue
+			case "DeclareMathOperator":
+				isStar := false
+				p.nextToken()
+				if p.curToken.Type == TokenText && strings.TrimSpace(p.curToken.Value) == "*" {
+					isStar = true
+					p.nextToken()
+				}
+				nameRaw2 := strings.TrimPrefix(strings.TrimSpace(p.readBraceGroupRaw()), "\\")
+				op := p.readBraceGroupRaw()
+				if nameRaw2 != "" {
+					if pres.Macros == nil {
+						pres.Macros = make(map[string]string)
+					}
+					if isStar {
+						pres.Macros["\\"+nameRaw2] = "\\operatorname*{" + op + "}"
+					} else {
+						pres.Macros["\\"+nameRaw2] = "\\operatorname{" + op + "}"
+					}
+				}
 				continue
 			case "addbibresource", "bibliography":
 				resource := p.parseRawArgument()

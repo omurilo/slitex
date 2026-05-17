@@ -10,6 +10,7 @@ export interface PresentationContextValue {
   presentationDate: string;
   bibliography: BibEntry[];
   citations: CitationRef[];
+  macros: Record<string, string>;
   
   citationNumber: (key: string) => number;
   
@@ -25,6 +26,7 @@ export const PresentationContext = createContext<PresentationContextValue>({
   presentationDate: '',
   bibliography: [],
   citations: [],
+  macros: {},
   citationNumber: () => 0,
   bibEntry: () => undefined,
 });
@@ -42,6 +44,7 @@ export function usePresentationContextValue(
   presentationDate: string,
   bibliography: BibEntry[],
   citations: CitationRef[],
+  macros: Record<string, string> = {},
 ): PresentationContextValue {
   const citMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -64,8 +67,9 @@ export function usePresentationContextValue(
     presentationDate,
     bibliography,
     citations,
+    macros,
     citationNumber: (key: string) => citMap.get(key) ?? 0,
     bibEntry: (key: string) => bibMap.get(key),
   }), [sections, presentationTitle, presentationSubtitle, presentationAuthor, presentationInstitute,
-       presentationDate, bibliography, citations, citMap, bibMap]);
+       presentationDate, bibliography, citations, macros, citMap, bibMap]);
 }
