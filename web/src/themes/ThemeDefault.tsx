@@ -61,10 +61,10 @@ export const ThemeDefaultFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', color: '#1e293b', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" }}>
-      {/* Accent top bar */}
+      
       <div style={{ height: '0.15em', background: 'linear-gradient(90deg, #6366f1, #8b5cf6 60%, rgba(139,92,246,0))', flexShrink: 0 }} />
 
-      {/* Header */}
+      
       <div style={{ padding: '1.69em 2.77em 0.77em', flexShrink: 0 }}>
         {frame.title && (
           <h2 style={{ fontSize: '2em', fontWeight: 800, color: '#0f172a', margin: 0, lineHeight: 1.1, letterSpacing: '-0.025em' }}>
@@ -78,21 +78,21 @@ export const ThemeDefaultFrame: React.FC<ThemeFrameProps> = ({
         )}
       </div>
 
-      {/* Separator */}
+      
       <div style={{ height: '0.04em', margin: '0 2.77em', background: 'linear-gradient(90deg, rgba(99,102,241,0.25), rgba(99,102,241,0))', flexShrink: 0 }} />
 
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '0.77em 2.77em 0.62em' }}>
         {children}
       </ContentScaler>
 
-      {/* Footer */}
+      
       <div style={{ padding: '0.54em 2.77em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', color: '#94a3b8', fontSize: '0.5em', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', flexShrink: 0 }}>
         <span style={{ maxWidth: '70%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationTitle}</span>
         <span style={{ fontFamily: 'monospace', letterSpacing: 0 }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
 
-      {/* Progress bar */}
+      
       <div style={{ height: '0.12em', background: '#f1f5f9', flexShrink: 0 }}>
         <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', transition: 'width 0.4s ease' }} />
       </div>

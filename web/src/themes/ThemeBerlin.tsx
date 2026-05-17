@@ -1,4 +1,3 @@
-// Berlin — dark navy header with mini-frame block indicators, clean white body.
 import React from 'react';
 import type { ThemeFrameProps } from './index';
 import { ContentScaler } from '../components/ContentScaler';
@@ -21,7 +20,6 @@ const VARS = {
   '--slide-code-text':      '#c4d4f8',
 } as React.CSSProperties;
 
-// Mini-frame blocks: small rectangles representing slides in the deck
 const MiniFrames: React.FC<{ total: number; current: number }> = ({ total, current }) => {
   const max = Math.min(total, 20);
   return (
@@ -81,29 +79,29 @@ export const ThemeBerlinFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: WHITE, color: '#1a1a2e', fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {/* Mini-frames bar */}
+      
       <div style={{ background: DARK, padding: '0.42em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.44em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '45%' }}>{presentationTitle}</span>
         <MiniFrames total={totaslitexs} current={slideIndex} />
       </div>
-      {/* Title */}
+      
       {frame.title && (
         <div style={{ background: MID, padding: '0.65em 2em', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.58em', fontWeight: 700, color: WHITE, margin: 0, lineHeight: 1.1 }}>{frame.title}</h2>
           {frame.subtitle && <p style={{ fontSize: '0.73em', color: 'rgba(255,255,255,0.85)', margin: '0.18em 0 0' }}>{frame.subtitle}</p>}
         </div>
       )}
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '0.9em 2em' }}>
         {children}
       </ContentScaler>
-      {/* Footer */}
+      
       <div style={{ background: DARK, padding: '0.35em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.7)', fontSize: '0.44em', flexShrink: 0 }}>
         <span style={{ maxWidth: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationAuthor}</span>
         <span style={{ maxWidth: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationTitle}</span>
         <span style={{ color: LIGHT, fontFamily: 'monospace', flexShrink: 0 }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
-      {/* Progress */}
+      
       <div style={{ height: '0.1em', background: '#d0d8f0', flexShrink: 0 }}>
         <div style={{ height: '100%', width: `${progress}%`, background: LIGHT, transition: 'width 0.4s ease' }} />
       </div>

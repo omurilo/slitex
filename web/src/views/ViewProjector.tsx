@@ -10,7 +10,6 @@ interface ProjectorProps {
   initiaslitex?: number;
 }
 
-/** Largest 16:9 rectangle that fits the container — rendered at actual pixel size, no intermediate transform. */
 const SLIDE_ASPECT = 16 / 9;
 
 const SlideCanvas: React.FC<{
@@ -27,8 +26,6 @@ const SlideCanvas: React.FC<{
     const update = () => {
       const { width, height } = el.getBoundingClientRect();
       if (!width) return;
-      // If height is 0 (e.g. aspect-ratio parent not propagating to h-full children),
-      // fall back to deriving height from width so dims.h is always non-zero.
       const w = height > 0 ? Math.min(width, height * SLIDE_ASPECT) : width;
       setDims({ w: Math.round(w), h: Math.round(w / SLIDE_ASPECT) });
     };
@@ -39,8 +36,6 @@ const SlideCanvas: React.FC<{
     return () => ro.disconnect();
   }, []);
 
-  // Scale relative to the 1920×1080 reference design used by themes.
-  // Passed as --slide-scale so font-size (and all em values) adapt to the actual canvas size.
   const scale = dims.w > 0 ? dims.w / 1920 : 1;
 
   if (dims.w === 0) {
@@ -53,7 +48,7 @@ const SlideCanvas: React.FC<{
       className="w-full h-full flex items-center justify-center"
       style={{ background: '#000' }}
     >
-      {/* Canvas sized to the largest 16:9 rect that fits the container. */}
+      
       <div
         style={{
           width: `${dims.w}px`,
@@ -63,8 +58,7 @@ const SlideCanvas: React.FC<{
           '--slide-scale': scale,
         } as React.CSSProperties}
       >
-        {/* position:absolute + inset:0 ensures height:100% always resolves to
-            dims.h regardless of the parent's CSS context (flex item, aspect-ratio, etc.) */}
+        
         <div
           key={slideIndex}
           className="slide-transition"
@@ -148,7 +142,6 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
     );
   }
 
-  // Resolve theme: builtin → external → null
   const BuiltinFrame = builtinThemes[ast.theme] ?? builtinThemes['default'];
   const ExternalTheme = (window as any).slitexThemes?.[ast.theme];
   const FrameComponent = ExternalTheme?.Frame ?? BuiltinFrame;
@@ -193,7 +186,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
         {frameContent}
       </SlideCanvas>
 
-      {/* Overview modal */}
+      
       {showOverview && (
         <div
           className="fixed inset-0 bg-black/85 z-50 overflow-auto p-8"

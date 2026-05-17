@@ -75,7 +75,7 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── Top bar ── */}
+      
       <header style={{ height: 52, flexShrink: 0, background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase' as const }}>slitex</span>
@@ -111,10 +111,10 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
         </div>
       </header>
 
-      {/* ── Main ── */}
+      
       <main style={{ flex: 1, display: 'flex', gap: 14, padding: 14, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* Left: current slide render */}
+        
         <div style={{ flex: '0 0 63%', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>Projetor ativo</span>
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
@@ -124,10 +124,10 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
           </div>
         </div>
 
-        {/* Right: next slide + notes */}
+        
         <div style={{ flex: '1 1 37%', display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden', minWidth: 0 }}>
 
-          {/* Next slide */}
+          
           <div style={{ flexShrink: 0, background: '#141414', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '12px 14px' }}>
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: 8 }}>Próximo slide</span>
             {nextFrame ? (
@@ -143,7 +143,7 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
             )}
           </div>
 
-          {/* Notes */}
+          
           <div style={{ flex: 1, background: '#141414', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '12px 14px', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: 8, flexShrink: 0 }}>Notas</span>
             <div style={{ flex: 1, overflowY: 'auto' as const }}>
@@ -157,7 +157,7 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
         </div>
       </main>
 
-      {/* ── Footer ── */}
+      
       <footer style={{ height: 52, flexShrink: 0, background: '#141414', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {['←', '→'].map(k => (

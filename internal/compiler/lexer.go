@@ -10,15 +10,15 @@ type TokenType string
 const (
 	TokenError        TokenType = "ERROR"
 	TokenEOF          TokenType = "EOF"
-	TokenCommand      TokenType = "COMMAND"       // \title, \begin, \includegraphics
-	TokenOpenBrace    TokenType = "OPEN_BRACE"    // {
-	TokenCloseBrace   TokenType = "CLOSE_BRACE"   // }
-	TokenOpenBracket  TokenType = "OPEN_BRACKET"  // [
-	TokenCloseBracket TokenType = "CLOSE_BRACKET" // ]
-	TokenLessThan     TokenType = "LESS_THAN"     // < (para overlays)
-	TokenGreaterThan  TokenType = "GREATER_THAN"  // > (para overlays)
-	TokenMath         TokenType = "MATH"          // $...$ ou \[...\]
-	TokenText         TokenType = "TEXT"          // Texto puro
+	TokenCommand      TokenType = "COMMAND"
+	TokenOpenBrace    TokenType = "OPEN_BRACE"
+	TokenCloseBrace   TokenType = "CLOSE_BRACE"
+	TokenOpenBracket  TokenType = "OPEN_BRACKET"
+	TokenCloseBracket TokenType = "CLOSE_BRACKET"
+	TokenLessThan     TokenType = "LESS_THAN"
+	TokenGreaterThan  TokenType = "GREATER_THAN"
+	TokenMath         TokenType = "MATH"
+	TokenText         TokenType = "TEXT"
 )
 
 type Token struct {
@@ -53,7 +53,6 @@ func (l *Lexer) readChar() {
 
 func (l *Lexer) NextToken() Token {
 	l.skipWhitespace()
-	// Skip LaTeX line comments: % until end of line
 	for l.ch == '%' {
 		for l.ch != '\n' && l.ch != 0 {
 			l.readChar()
@@ -184,9 +183,6 @@ func isLetter(ch byte) bool {
 	return unicode.IsLetter(rune(ch))
 }
 
-// PeekRaw returns the next n raw bytes from the current lexer position
-// without consuming them. Used to detect split end-markers across the
-// token-lookahead boundary.
 func (l *Lexer) PeekRaw(n int) string {
 	end := l.position + n
 	if end > len(l.input) {
@@ -195,8 +191,6 @@ func (l *Lexer) PeekRaw(n int) string {
 	return l.input[l.position:end]
 }
 
-// ReadRawUntil reads raw text until endMarker is found,
-// returning content before the marker and advancing past it.
 func (l *Lexer) ReadRawUntil(endMarker string) string {
 	var sb strings.Builder
 	for l.ch != 0 {

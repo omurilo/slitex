@@ -59,7 +59,6 @@ func (s *DevServer) sseHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.mu.Lock()
 	s.clients[messageChan] = true
-	// Send current sync state to newly connected client
 	stateJSON, _ := json.Marshal(map[string]interface{}{
 		"type":  "sync",
 		"slide": s.syncState.Slide,
@@ -67,7 +66,6 @@ func (s *DevServer) sseHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	s.mu.Unlock()
 
-	// Send initial state immediately
 	fmt.Fprintf(w, "data: %s\n\n", stateJSON)
 	w.(http.Flusher).Flush()
 
@@ -149,8 +147,6 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 
 	baseDir := filepath.Dir(s.targetFile)
 
-	// Run the parser in a goroutine with a timeout to prevent hanging on
-	// malformed or unsupported LaTeX constructs.
 	type result struct {
 		pres *compiler.Presentation
 		err  error
@@ -177,7 +173,6 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve and parse .bib files
 	for _, res := range presentation.BibResources {
 		bibPath := resolveBibPath(res, baseDir)
 		if bibPath == "" {
@@ -194,8 +189,6 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(presentation)
 }
 
-// resolveBibPath resolves a bib resource name to an absolute file path,
-// searching in baseDir and baseDir/templates.
 func resolveBibPath(resource, baseDir string) string {
 	candidates := []string{
 		filepath.Join(baseDir, resource),
@@ -247,10 +240,6 @@ func (s *DevServer) watchFile() {
 	}
 }
 
-// themeHandler returns an http.Handler for external themes.
-// It first looks for the requested file in the <baseDir>/themes/ local folder
-// (next to the .tex file), and falls back to ./node_modules so that npm-installed
-// packages are still found.
 func (s *DevServer) themeHandler() http.Handler {
 	baseDir := filepath.Dir(s.targetFile)
 	localThemesDir := filepath.Join(baseDir, "themes")
@@ -259,12 +248,9 @@ func (s *DevServer) themeHandler() http.Handler {
 	npmFS := http.FileServer(http.Dir("./node_modules"))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Clean the URL path so that path-traversal sequences are neutralised
-		// before we build the OS path (same logic http.FileServer uses internally).
 		cleanedURL := path.Clean("/" + r.URL.Path)
 		candidate := filepath.Join(localThemesDir, filepath.FromSlash(cleanedURL))
 
-		// Guard: resolved path must still live inside localThemesDir.
 		absDir, _ := filepath.Abs(localThemesDir)
 		absCandidate, _ := filepath.Abs(candidate)
 		if strings.HasPrefix(absCandidate, absDir+string(filepath.Separator)) {
@@ -288,7 +274,6 @@ func (s *DevServer) Start(port string) error {
 
 	mux.Handle("/themes/external/", http.StripPrefix("/themes/external/", s.themeHandler()))
 
-	// Serve static assets (images etc.) from the .tex file's directory.
 	texDir := filepath.Dir(s.targetFile)
 	mux.Handle("/files/", http.StripPrefix("/files/", http.FileServer(http.Dir(texDir))))
 

@@ -29,10 +29,8 @@ export interface ThemeFrameProps {
 export type ThemeFrameComponent = React.FC<ThemeFrameProps>;
 
 export const builtinThemes: Record<string, ThemeFrameComponent> = {
-  // slitex built-ins
   default:     ThemeDefaultFrame,
   metropolis:  ThemeMetropolisFrame,
-  // classic Beamer themes
   madrid:      ThemeMadridFrame,
   warsaw:      ThemeWarsawFrame,
   frankfurt:   ThemeFrankfurtFrame,

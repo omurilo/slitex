@@ -4,13 +4,11 @@ import (
 	"strings"
 )
 
-// CitationRef records the order a citation key was first encountered.
 type CitationRef struct {
 	Key   string `json:"key"`
 	Index int    `json:"index"`
 }
 
-// BibEntry represents a single BibTeX bibliography entry.
 type BibEntry struct {
 	Key          string `json:"key"`
 	Type         string `json:"type"`
@@ -28,30 +26,26 @@ type BibEntry struct {
 	Howpublished string `json:"howpublished,omitempty"`
 }
 
-// ParseBibTeX parses BibTeX source content and returns bibliography entries.
 func ParseBibTeX(content string) []BibEntry {
 	var entries []BibEntry
 	i := 0
 	n := len(content)
 
 	for i < n {
-		// Advance to next '@'
 		for i < n && content[i] != '@' {
 			i++
 		}
 		if i >= n {
 			break
 		}
-		i++ // skip '@'
+		i++
 
-		// Read entry type (letters only)
 		typeStart := i
 		for i < n && isBibAlpha(content[i]) {
 			i++
 		}
 		entryType := strings.ToLower(content[typeStart:i])
 
-		// Skip whitespace then find opening brace/paren
 		for i < n && content[i] != '{' && content[i] != '(' {
 			i++
 		}
@@ -62,9 +56,8 @@ func ParseBibTeX(content string) []BibEntry {
 		if content[i] == '(' {
 			closeDelim = ')'
 		}
-		i++ // skip opening delimiter
+		i++
 
-		// Skip non-data entry types
 		if entryType == "comment" || entryType == "preamble" || entryType == "string" {
 			depth := 1
 			for i < n && depth > 0 {
@@ -78,19 +71,16 @@ func ParseBibTeX(content string) []BibEntry {
 			continue
 		}
 
-		// Skip whitespace before key
 		for i < n && isBibSpace(content[i]) {
 			i++
 		}
 
-		// Read citation key
 		keyStart := i
 		for i < n && content[i] != ',' && content[i] != closeDelim && !isBibSpace(content[i]) {
 			i++
 		}
 		key := strings.TrimSpace(content[keyStart:i])
 
-		// Skip whitespace and comma
 		for i < n && isBibSpace(content[i]) {
 			i++
 		}
@@ -102,7 +92,6 @@ func ParseBibTeX(content string) []BibEntry {
 
 	fieldLoop:
 		for i < n {
-			// Skip whitespace
 			for i < n && isBibSpace(content[i]) {
 				i++
 			}
@@ -113,14 +102,12 @@ func ParseBibTeX(content string) []BibEntry {
 				break fieldLoop
 			}
 
-			// Read field name
 			fieldStart := i
 			for i < n && content[i] != '=' && content[i] != closeDelim && !isBibSpace(content[i]) {
 				i++
 			}
 			fieldName := strings.ToLower(strings.TrimSpace(content[fieldStart:i]))
 
-			// Skip whitespace + '='
 			for i < n && (isBibSpace(content[i]) || content[i] == '=') {
 				i++
 			}
@@ -128,7 +115,6 @@ func ParseBibTeX(content string) []BibEntry {
 				break fieldLoop
 			}
 
-			// Read field value
 			var value string
 			switch content[i] {
 			case '{':
@@ -148,7 +134,7 @@ func ParseBibTeX(content string) []BibEntry {
 				}
 				value = content[valueStart:i]
 				if i < n {
-					i++ // skip '}'
+					i++
 				}
 			case '"':
 				i++
@@ -158,10 +144,9 @@ func ParseBibTeX(content string) []BibEntry {
 				}
 				value = content[valueStart:i]
 				if i < n {
-					i++ // skip '"'
+					i++
 				}
 			default:
-				// Unquoted value (usually a number like year = 2023)
 				valueStart := i
 				for i < n && content[i] != ',' && content[i] != closeDelim && !isBibSpace(content[i]) {
 					i++
@@ -171,7 +156,6 @@ func ParseBibTeX(content string) []BibEntry {
 
 			value = cleanBibValue(value)
 
-			// Populate known fields
 			switch fieldName {
 			case "author", "editor":
 				entry.Author = value
@@ -199,7 +183,6 @@ func ParseBibTeX(content string) []BibEntry {
 				entry.Howpublished = value
 			}
 
-			// Skip trailing whitespace and comma
 			for i < n && isBibSpace(content[i]) {
 				i++
 			}
@@ -216,7 +199,6 @@ func ParseBibTeX(content string) []BibEntry {
 	return entries
 }
 
-// cleanBibValue removes common LaTeX formatting from a BibTeX field value.
 func cleanBibValue(v string) string {
 	v = strings.ReplaceAll(v, "{", "")
 	v = strings.ReplaceAll(v, "}", "")

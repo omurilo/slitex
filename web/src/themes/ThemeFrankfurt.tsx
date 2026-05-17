@@ -1,4 +1,3 @@
-// Frankfurt — dark teal header, section-style progress dots in top bar, clean white body.
 import React from 'react';
 import type { ThemeFrameProps } from './index';
 import { ContentScaler } from '../components/ContentScaler';
@@ -80,23 +79,23 @@ export const ThemeFrankfurtFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: WHITE, color: '#1a1a2e', fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {/* Top progress bar */}
+      
       <div style={{ background: DARK, padding: '0.45em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.46em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '50%' }}>{presentationTitle}</span>
         <ProgressDots total={totaslitexs} current={slideIndex} />
       </div>
-      {/* Title band */}
+      
       {frame.title && (
         <div style={{ background: MID, padding: '0.65em 2em', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.55em', fontWeight: 700, color: WHITE, margin: 0, lineHeight: 1.1 }}>{frame.title}</h2>
           {frame.subtitle && <p style={{ fontSize: '0.72em', color: 'rgba(255,255,255,0.85)', margin: '0.18em 0 0' }}>{frame.subtitle}</p>}
         </div>
       )}
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '0.9em 2em' }}>
         {children}
       </ContentScaler>
-      {/* Footer */}
+      
       <div style={{ background: DARK, padding: '0.35em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.7)', fontSize: '0.44em', flexShrink: 0 }}>
         <span style={{ maxWidth: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationAuthor}</span>
         <span style={{ maxWidth: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{presentationTitle}</span>

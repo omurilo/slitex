@@ -28,7 +28,6 @@ export function useSyncSlides(initiaslitex = 0) {
           setState({ currentSlide: msg.slide, currentStep: msg.step });
         }
       } catch {
-        // ignore malformed messages
       }
     };
 
@@ -41,7 +40,7 @@ export function useSyncSlides(initiaslitex = 0) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ slide: nextSlide, step: nextStep }),
-    }).catch(() => {/* best-effort */});
+    }).catch(() => );
   }, []);
 
   return {

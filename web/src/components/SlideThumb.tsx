@@ -10,15 +10,9 @@ interface SlideThumbProps {
   slideIndex: number;
 }
 
-// The reference design width/height that all themes target.
 const DESIGN_W = 1920;
 const DESIGN_H = 1080;
 
-/**
- * Renders a specific slide frame at its natural 1920×1080 size and then CSS-scales
- * the result down to fit the container width while preserving 16:9 aspect ratio.
- * This produces a pixel-faithful thumbnail of the real slide without any sync state.
- */
 export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
@@ -53,7 +47,7 @@ export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }
 
   return (
     <PresentationContext.Provider value={ctxValue}>
-      {/* Container: fills parent width, height derived from 16:9 */}
+      
       <div
         ref={containerRef}
         className="slide-thumb-outer"
@@ -67,7 +61,6 @@ export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }
               height: DESIGN_H,
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
-              // slide-scale: 1 → themes render at full reference font size; CSS scale handles the zoom-out
               '--slide-scale': 1,
               position: 'absolute',
               top: 0,

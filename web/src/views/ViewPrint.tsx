@@ -100,14 +100,14 @@ export const ViewPrint: React.FC<PrintProps> = ({ ast }) => {
             margin: 0 !important;
             overflow: hidden !important;
           }
-          /* SlideThumb outer — fixed design size, no clip */
+          
           .slide-thumb-outer {
             width: 1920px !important;
             height: 1080px !important;
             overflow: visible !important;
             aspect-ratio: unset !important;
           }
-          /* SlideThumb inner — render at 1:1, no scale transform */
+          
           .slide-thumb-inner {
             transform: none !important;
             position: relative !important;

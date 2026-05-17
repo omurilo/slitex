@@ -13,14 +13,12 @@ export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
 
   const handleSelect = (index: number) => {
     updateState(index, 1);
-    // Do not close — keep overview open so the user can keep navigating.
-    // The POST to /api/sync navigates the main window via SSE.
   };
 
   return (
     <div style={{ height: '100vh', background: '#0d0d0d', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflow: 'hidden' }}>
 
-      {/* ── Header ── */}
+      
       <header style={{ flexShrink: 0, height: 52, background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase' as const }}>slitex</span>
@@ -40,7 +38,7 @@ export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
         >Fechar</button>
       </header>
 
-      {/* ── Thumbnail grid ── */}
+      
       <div style={{ flex: 1, overflowY: 'auto' as const, padding: '28px 24px', maxWidth: 1440, margin: '0 auto', width: '100%', boxSizing: 'border-box' as const }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
           {frames.map((frame, i) => {
@@ -65,11 +63,11 @@ export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
                 onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; } }}
                 onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; } }}
               >
-                {/* Thumbnail (actual slide render) */}
+                
                 <div style={{ position: 'relative', width: '100%' }}>
                   <SlideThumb frame={frame} ast={ast} slideIndex={i} />
 
-                  {/* Slide number — top-left overlay */}
+                  
                   <div style={{
                     position: 'absolute', top: 7, left: 9,
                     fontFamily: 'monospace', fontSize: 11, fontWeight: 700,
@@ -81,7 +79,7 @@ export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
                     {String(i + 1).padStart(2, '0')}
                   </div>
 
-                  {/* Notes indicator — bottom-right overlay */}
+                  
                   {frame.notes && (
                     <div style={{
                       position: 'absolute', bottom: 7, right: 9,
@@ -95,7 +93,7 @@ export const ViewOverview: React.FC<OverviewProps> = ({ ast }) => {
                   )}
                 </div>
 
-                {/* Footer label */}
+                
                 <div style={{
                   padding: '7px 10px',
                   borderTop: `1px solid ${isActive ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)'}`,

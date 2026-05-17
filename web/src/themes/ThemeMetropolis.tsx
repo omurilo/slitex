@@ -61,7 +61,7 @@ export const ThemeMetropolisFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#fafafa', color: CHARCOAL, fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
-      {/* Dark header */}
+      
       <div style={{ backgroundColor: CHARCOAL, padding: '1.23em 2.46em', flexShrink: 0 }}>
         {frame.title && (
           <h2 style={{ fontSize: '1.7em', fontWeight: 700, color: '#fafafa', margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
@@ -75,21 +75,21 @@ export const ThemeMetropolisFrame: React.FC<ThemeFrameProps> = ({
         )}
       </div>
 
-      {/* Thin orange accent line */}
+      
       <div style={{ height: '0.12em', background: ORANGE, flexShrink: 0 }} />
 
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '1.08em 2.46em' }}>
         {children}
       </ContentScaler>
 
-      {/* Footer */}
+      
       <div style={{ backgroundColor: CHARCOAL, padding: '0.54em 2.46em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#9cb5ba', fontSize: '0.5em', fontWeight: 500, flexShrink: 0 }}>
         <span>{presentationAuthor || presentationTitle}</span>
         <span style={{ fontFamily: 'monospace', color: ORANGE }}>{slideIndex + 1} / {totaslitexs}</span>
       </div>
 
-      {/* Orange progress bar */}
+      
       <div style={{ height: '0.15em', background: '#1a2a2e', flexShrink: 0 }}>
         <div style={{ height: '100%', width: `${progress}%`, background: ORANGE, transition: 'width 0.4s ease' }} />
       </div>

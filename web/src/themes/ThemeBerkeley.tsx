@@ -1,11 +1,10 @@
-// Berkeley — sidebar navigation theme: dark blue left sidebar + white main content area.
 import React from 'react';
 import type { ThemeFrameProps } from './index';
 import { ContentScaler } from '../components/ContentScaler';
 
-const DARK  = '#1a237e';   // deep indigo (classic Berkeley blue)
+const DARK  = '#1a237e';
 const MID   = '#283593';
-const GOLD  = '#c9a227';   // Berkeley gold accent
+const GOLD  = '#c9a227';
 const WHITE = '#ffffff';
 const BG    = '#fafbff';
 
@@ -22,7 +21,6 @@ const VARS = {
   '--slide-code-text':      '#c8ccf8',
 } as React.CSSProperties;
 
-// Sidebar: shows title, gold divider, progress indicators
 const Sidebar: React.FC<{ title: string; total: number; current: number }> = ({ title, total, current }) => {
   const count = Math.min(total, 16);
   return (
@@ -37,7 +35,7 @@ const Sidebar: React.FC<{ title: string; total: number; current: number }> = ({ 
       gap: '0.5em',
       overflow: 'hidden',
     }}>
-      {/* Short presentation title */}
+      
       <div style={{
         color: GOLD,
         fontSize: '0.44em',
@@ -50,9 +48,9 @@ const Sidebar: React.FC<{ title: string; total: number; current: number }> = ({ 
       }}>
         {title}
       </div>
-      {/* Gold divider */}
+      
       <div style={{ width: '60%', height: '0.06em', background: GOLD, opacity: 0.6 }} />
-      {/* Progress dots */}
+      
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2em', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
         {Array.from({ length: count }).map((_, i) => {
           const slideIdx = Math.round((i / Math.max(count - 1, 1)) * (total - 1));
@@ -68,7 +66,7 @@ const Sidebar: React.FC<{ title: string; total: number; current: number }> = ({ 
           );
         })}
       </div>
-      {/* Slide counter */}
+      
       <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.38em', fontFamily: 'monospace' }}>
         {current + 1}/{total}
       </div>
@@ -108,24 +106,24 @@ export const ThemeBerkeleyFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {/* Left sidebar */}
+      
       <Sidebar title={presentationTitle} total={totaslitexs} current={slideIndex} />
-      {/* Main area */}
+      
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: BG, color: '#1a1a2e', overflow: 'hidden' }}>
-        {/* Gold accent line */}
+        
         <div style={{ height: '0.18em', background: GOLD, flexShrink: 0 }} />
-        {/* Frame title */}
+        
         {frame.title && (
           <div style={{ padding: '0.75em 1.8em 0.55em', borderBottom: '0.06em solid #dde0f8', flexShrink: 0 }}>
             <h2 style={{ fontSize: '1.6em', fontWeight: 700, color: DARK, margin: 0, lineHeight: 1.1 }}>{frame.title}</h2>
             {frame.subtitle && <p style={{ fontSize: '0.74em', color: MID, margin: '0.18em 0 0', fontStyle: 'italic' }}>{frame.subtitle}</p>}
           </div>
         )}
-        {/* Content */}
+        
         <ContentScaler style={{ flex: 1, padding: '0.9em 1.8em' }}>
           {children}
         </ContentScaler>
-        {/* Footer */}
+        
         <div style={{ background: DARK, padding: '0.35em 1.8em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.65)', fontSize: '0.44em', flexShrink: 0 }}>
           <span style={{ maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationAuthor}</span>
           <span style={{ color: GOLD, fontFamily: 'monospace', flexShrink: 0 }}>{slideIndex + 1} / {totaslitexs}</span>

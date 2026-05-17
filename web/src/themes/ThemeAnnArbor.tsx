@@ -1,10 +1,9 @@
-// AnnArbor — University of Michigan colors: Maize (yellow) header bars + Michigan Blue content.
 import React from 'react';
 import type { ThemeFrameProps } from './index';
 import { ContentScaler } from '../components/ContentScaler';
 
-const MAIZE = '#FFCB05';   // Michigan Maize
-const MBLUE = '#00274C';   // Michigan Blue
+const MAIZE = '#FFCB05';
+const MBLUE = '#00274C';
 const MID   = '#00407a';
 const WHITE = '#ffffff';
 const BG    = '#fafcff';
@@ -40,7 +39,7 @@ export const ThemeAnnArborFrame: React.FC<ThemeFrameProps> = ({
   if (frame.titlePage) {
     return (
       <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: MBLUE, fontFamily: "Arial, Helvetica, sans-serif", color: WHITE }}>
-        {/* Maize accent stripe */}
+        
         <div style={{ height: '0.5em', background: MAIZE, flexShrink: 0 }} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5em 4em', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2.6em', fontWeight: 700, color: MAIZE, margin: 0, lineHeight: 1.1 }}>{presentationTitle}</h1>
@@ -51,7 +50,7 @@ export const ThemeAnnArborFrame: React.FC<ThemeFrameProps> = ({
           {presentationDate      && <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.6em',  margin: 0 }}>{presentationDate}</p>}
           <div style={{ marginTop: '0.7em', color: MAIZE }}>{children}</div>
         </div>
-        {/* Maize bottom stripe */}
+        
         <div style={{ height: '0.5em', background: MAIZE, flexShrink: 0 }} />
       </div>
     );
@@ -59,7 +58,7 @@ export const ThemeAnnArborFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: BG, color: '#1a1a2e', fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {/* Maize + Blue header */}
+      
       <div style={{ background: MBLUE, flexShrink: 0 }}>
         <div style={{ height: '0.28em', background: MAIZE }} />
         <div style={{ padding: '0.38em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -67,18 +66,18 @@ export const ThemeAnnArborFrame: React.FC<ThemeFrameProps> = ({
           <span style={{ color: MAIZE, fontSize: '0.44em', fontFamily: 'monospace', flexShrink: 0 }}>{slideIndex + 1} / {totaslitexs}</span>
         </div>
       </div>
-      {/* Frame title */}
+      
       {frame.title && (
         <div style={{ padding: '0.75em 2em 0.55em', borderBottom: '0.06em solid #d0daf0', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.65em', fontWeight: 700, color: MBLUE, margin: 0, lineHeight: 1.1 }}>{frame.title}</h2>
           {frame.subtitle && <p style={{ fontSize: '0.74em', color: MID, margin: '0.18em 0 0', fontStyle: 'italic' }}>{frame.subtitle}</p>}
         </div>
       )}
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '0.9em 2em' }}>
         {children}
       </ContentScaler>
-      {/* Footer */}
+      
       <div style={{ background: MBLUE, flexShrink: 0 }}>
         <div style={{ padding: '0.35em 2em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.7)', fontSize: '0.44em' }}>
           <span style={{ maxWidth: '38%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationAuthor}</span>
@@ -87,7 +86,7 @@ export const ThemeAnnArborFrame: React.FC<ThemeFrameProps> = ({
         </div>
         <div style={{ height: '0.25em', background: MAIZE }} />
       </div>
-      {/* Progress bar */}
+      
       <div style={{ height: '0.1em', background: '#d0daf0', flexShrink: 0 }}>
         <div style={{ height: '100%', width: `${progress}%`, background: MBLUE, transition: 'width 0.4s ease' }} />
       </div>

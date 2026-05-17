@@ -10,7 +10,6 @@ interface RendererProps {
   theme: string;
 }
 
-// CSS variable defaults for contexts outside a themed canvas (e.g. ViewPresenter)
 const cv = (name: string, fallback: string) => `var(${name}, ${fallback})`;
 
 const ACCENT   = () => cv('--slide-accent', '#6366f1');
@@ -52,8 +51,6 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           return <span key={i} style={{ color: el.color, ...sizeStyle }}>{el.value}</span>;
         case 'math': {
           const raw = el.value;
-          // Values starting with \begin (math environments), multiline, or
-          // long are rendered as display blocks; everything else is inline.
           const isDisplay = raw.startsWith('\\begin') || raw.includes('\n') || raw.length > 40;
           return isDisplay
             ? <div key={i} style={{ margin: '0.4em 0', textAlign: 'center', ...sizeStyle }}>
@@ -106,7 +103,6 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
 
   switch (node.type) {
     case 'richtext':
-      // Item may have both inline text AND nested children (e.g. nested list)
       if (node.children && node.children.length > 0) {
         return (
           <div style={node.centered ? { textAlign: 'center' } : undefined}>

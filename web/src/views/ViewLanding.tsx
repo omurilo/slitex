@@ -51,7 +51,7 @@ export const ViewLanding: React.FC<LandingProps> = ({ ast }) => {
   return (
     <div style={{ minHeight: '100vh', background: '#0d0d0d', display: 'flex', flexDirection: 'column', fontFamily: 'sans-serif' }}>
 
-      {/* Top bar */}
+      
       <header style={{
         height: 48, flexShrink: 0, background: '#141414',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
@@ -87,13 +87,13 @@ export const ViewLanding: React.FC<LandingProps> = ({ ast }) => {
         </div>
       </header>
 
-      {/* Slide preview */}
+      
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 32px 28px' }}>
         <div style={{ width: '100%', maxWidth: 960, aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 48px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
           <ViewProjector ast={ast} />
         </div>
 
-        {/* Metadata */}
+        
         {(ast.author || ast.date) && (
           <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
             {ast.author && <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.28)', fontFamily: 'sans-serif' }}>{ast.author}</span>}
@@ -102,7 +102,7 @@ export const ViewLanding: React.FC<LandingProps> = ({ ast }) => {
           </div>
         )}
 
-        {/* Navigation */}
+        
         <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <button onClick={handlePrev} disabled={atStart} style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', cursor: atStart ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: atStart ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)' }}
             onMouseEnter={e => { if (!atStart) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'rgba(255,255,255,0.85)'; } }}

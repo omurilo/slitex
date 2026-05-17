@@ -85,7 +85,6 @@ type InlineContent struct {
 	Size    string     `json:"size,omitempty"`
 }
 
-// fontSizeEmMap maps LaTeX font-size commands to CSS em values.
 var fontSizeEmMap = map[string]string{
 	"Huge":         "2.5em",
 	"huge":         "2em",
@@ -147,7 +146,6 @@ func NewParser(l *Lexer, baseDir string) *Parser {
 
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
-	// When an included file ends, pop back to the parent lexer
 	if p.curToken.Type == TokenEOF && len(p.lexerStack) > 0 {
 		frame := p.lexerStack[len(p.lexerStack)-1]
 		p.lexerStack = p.lexerStack[:len(p.lexerStack)-1]
@@ -169,7 +167,6 @@ func (p *Parser) citationRef(key string) string {
 	return strconv.Itoa(p.citationIndex)
 }
 
-// formatDate formats a time according to the presentation language.
 func formatDate(t time.Time, lang string) string {
 	if lang == "pt-BR" {
 		months := []string{
@@ -181,9 +178,6 @@ func formatDate(t time.Time, lang string) string {
 	return t.Format("02/01/2006")
 }
 
-// includeFile pushes the current lexer state and switches to a new lexer for
-// the included file. The file is searched relative to baseDir and in a
-// templates/ subdirectory.
 func (p *Parser) includeFile(filename string) {
 	if filename == "" || len(p.lexerStack) >= 10 {
 		return
@@ -199,7 +193,6 @@ func (p *Parser) includeFile(filename string) {
 		if err != nil {
 			continue
 		}
-		// Push current state so we can restore it when the include ends
 		p.lexerStack = append(p.lexerStack, lexerFrame{
 			l:         p.l,
 			curToken:  p.curToken,
@@ -212,7 +205,6 @@ func (p *Parser) includeFile(filename string) {
 	}
 }
 
-// parseOptionalArgString reads an optional [bracket argument] if present.
 func (p *Parser) parseOptionalArgString() string {
 	if p.curToken.Type != TokenOpenBracket {
 		return ""
@@ -261,8 +253,6 @@ func maxStepsFromContent(c Content) int {
 }
 
 func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
-	// Recover from any unexpected panics so the server always returns an error
-	// response instead of hanging or crashing the handler goroutine.
 	defer func() {
 		if r := recover(); r != nil {
 			pres = nil
@@ -306,7 +296,7 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 			case "subsection", "subsubsection":
 				_ = p.parseRawArgument()
 			case "usepackage":
-				p.nextToken() // skip \usepackage
+				p.nextToken()
 				opts := p.parseOptionalArgString()
 				pkg := ""
 				if p.curToken.Type == TokenOpenBrace {
@@ -334,7 +324,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				p.parseGraphicsPaths()
 				continue
 			case "definecolor":
-				// \definecolor{name}{model}{value}
 				p.nextToken()
 				name := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
 				model := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
@@ -365,10 +354,8 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				}
 				continue
 			case "colorlet":
-				// \colorlet{newname}{existingname}
 				p.nextToken()
 				newName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
-				// Skip optional [model] if present
 				_ = p.parseOptionalArgString()
 				otherName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
 				if p.namedColors != nil {
@@ -378,7 +365,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				}
 				continue
 			case "lstdefinestyle", "lstdefinelanguage":
-				// \lstdefinestyle{name}{options} — extract language hint
 				p.nextToken()
 				name := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
 				opts := p.readBraceGroupRaw()
@@ -391,7 +377,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				}
 				continue
 			case "newtcblisting", "lstnewenvironment", "newtcbinputlisting":
-				// \newtcblisting{envName}[nargs]{options}
 				p.nextToken()
 				envName := strings.ToLower(strings.TrimSpace(p.parseRawArgument()))
 				nargs := 0
@@ -399,7 +384,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 					nb := p.parseOptionalArgString()
 					nargs, _ = strconv.Atoi(strings.TrimSpace(nb))
 				}
-				// Read all remaining brace groups (may be 1 or more for begin/end defs)
 				var allOpts strings.Builder
 				for p.curToken.Type == TokenOpenBrace {
 					allOpts.WriteString(p.readBraceGroupRaw())
@@ -408,7 +392,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 				opts := allOpts.String()
 				lang := extractLstOption(opts, "language")
 				if lang == "" {
-					// Try via style= lookup in listing options
 					styleName := strings.ToLower(extractLstOption(opts, "style"))
 					if styleName != "" && p.lstStyles != nil {
 						lang = p.lstStyles[styleName]
@@ -438,7 +421,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 					frame.Section = currentSection
 					pres.Frames = append(pres.Frames, frame)
 				} else if arg == "document" {
-					// nothing
 				} else if arg != "" {
 					p.skipEnvironment(arg)
 				}
@@ -452,7 +434,6 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 		}
 	}
 
-	// Export ordered citation list
 	for _, key := range p.citationKeys {
 		pres.Citations = append(pres.Citations, CitationRef{
 			Key:   key,
@@ -463,18 +444,10 @@ func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
 	return pres, nil
 }
 
-// parseRawArgument reads {content}, skipping an optional leading [...].
-// parseMetadataArg reads a \command[opt]{content} metadata argument and
-// returns a clean human-readable string. It correctly handles nested braces,
-// converts \\ to newlines, strips LaTeX spacing commands (\smallskip etc.),
-// unwraps inline formatting wrappers (\textit, \textbf, \emph, etc.) so
-// their content passes through without the surrounding braces, and expands
-// \today to a formatted date using the supplied language code.
 func (p *Parser) parseMetadataArg(lang string) string {
 	if p.curToken.Type == TokenCommand {
 		p.nextToken()
 	}
-	// Skip optional [short form]
 	if p.curToken.Type == TokenOpenBracket {
 		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
 			p.nextToken()
@@ -484,7 +457,7 @@ func (p *Parser) parseMetadataArg(lang string) string {
 	if p.curToken.Type != TokenOpenBrace {
 		return ""
 	}
-	p.nextToken() // consume opening {
+	p.nextToken()
 	var sb strings.Builder
 	depth := 1
 	for depth > 0 && p.curToken.Type != TokenEOF {
@@ -511,7 +484,6 @@ func (p *Parser) parseMetadataArg(lang string) string {
 				sb.WriteString(formatDate(time.Now(), lang))
 			case "smallskip", "medskip", "bigskip", "vspace", "hspace",
 				"noindent", "newline", "par":
-				// Skip spacing commands and any brace argument they may take.
 				if p.curToken.Type == TokenOpenBrace {
 					for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
 						p.nextToken()
@@ -522,8 +494,6 @@ func (p *Parser) parseMetadataArg(lang string) string {
 				}
 			case "textit", "textbf", "emph", "textrm", "textsf", "texttt",
 				"text", "mbox", "textsc", "textup", "textnormal":
-				// Formatting wrappers: skip the command name; the brace content
-				// is captured naturally via the depth counter above.
 			case "and":
 				sb.WriteString(" \u0026 ")
 			case "&", "%", "#", "_":
@@ -534,7 +504,6 @@ func (p *Parser) parseMetadataArg(lang string) string {
 				sb.WriteString("–")
 			case "textemdash":
 				sb.WriteString("—")
-				// All other unknown commands are silently skipped.
 			}
 		default:
 			p.nextToken()
@@ -547,7 +516,6 @@ func (p *Parser) parseRawArgument() string {
 	if p.curToken.Type == TokenCommand {
 		p.nextToken()
 	}
-	// Skip optional [short form]
 	if p.curToken.Type == TokenOpenBracket {
 		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
 			p.nextToken()
@@ -597,10 +565,7 @@ func (p *Parser) skipUnknownCommand() {
 	}
 }
 
-// skipEnvironment skips a \begin{env}...\end{env} block, correctly
-// handling nested environments with the same name (depth tracking).
 func (p *Parser) skipEnvironment(envName string) {
-	// Skip any extra args like {99} in \begin{thebibliography}{99}
 	for p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
 		closeType := TokenCloseBrace
 		if p.curToken.Type == TokenOpenBracket {
@@ -614,7 +579,6 @@ func (p *Parser) skipEnvironment(envName string) {
 			p.nextToken()
 		}
 	}
-	// Skip body, tracking depth for nested same-name environments.
 	depth := 1
 	for p.curToken.Type != TokenEOF && depth > 0 {
 		if p.curToken.Type == TokenCommand {
@@ -645,7 +609,6 @@ func (p *Parser) parseFrame() (Frame, error) {
 
 	_ = p.parseOverlaySpecification()
 
-	// Parse optional [options] and detect plain flag
 	if p.curToken.Type == TokenOpenBracket {
 		p.nextToken()
 		var opts strings.Builder
@@ -732,7 +695,6 @@ frameLoop:
 				frame.Content = append(frame.Content, Content{Type: ContentVFill})
 				continue
 			case "centering":
-				// Set a flag on the next content item; handled via a pending state
 				p.nextToken()
 				pendingCentered = true
 				continue
@@ -796,7 +758,6 @@ func (p *Parser) parseContent() (*Content, error) {
 				return p.parseTabular()
 			case "quote", "quotation", "verse":
 				return p.parseQuote(env)
-			// Math display environments
 			case "equation", "equation*", "align", "align*",
 				"gather", "gather*", "multline", "multline*",
 				"eqnarray", "eqnarray*":
@@ -809,11 +770,9 @@ func (p *Parser) parseContent() (*Content, error) {
 					Type:   ContentRichText,
 					Inline: []InlineContent{{Type: InlineMathMode, Value: wrapped}},
 				}, nil
-			// Theorem-like environments
 			case "theorem", "lemma", "corollary", "proof",
 				"definition", "example", "remark", "proposition":
 				return p.parseTheoremBlock(env)
-			// Wrapper environments: parse children, unwrap if single
 			case "figure", "figure*", "table", "table*", "center":
 				return p.parseGenericWrapper(env)
 			case "thebibliography":
@@ -834,7 +793,7 @@ func (p *Parser) parseContent() (*Content, error) {
 			return p.parseImage(), nil
 		case "printbibliography":
 			p.nextToken()
-			_ = p.parseOptionalArgString() // e.g. [title=References]
+			_ = p.parseOptionalArgString()
 			return &Content{Type: ContentBibliography}, nil
 		case "input", "include", "subfile":
 			filename := p.parseRawArgument()
@@ -918,7 +877,6 @@ func (p *Parser) parseContent() (*Content, error) {
 
 func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 	var elements []InlineContent
-	// Track font size through LaTeX scopes { ... }
 	currentFontSize := ""
 	var fontSizeStack []string
 
@@ -935,11 +893,9 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			p.nextToken()
 			elements = append(elements, InlineContent{Type: InlineMathMode, Value: val, Size: currentFontSize})
 		case TokenOpenBrace:
-			// Push current size onto the scope stack (groups inherit parent size)
 			fontSizeStack = append(fontSizeStack, currentFontSize)
 			p.nextToken()
 		case TokenCloseBrace:
-			// Restore size from the enclosing scope
 			if len(fontSizeStack) > 0 {
 				currentFontSize = fontSizeStack[len(fontSizeStack)-1]
 				fontSizeStack = fontSizeStack[:len(fontSizeStack)-1]
@@ -988,13 +944,11 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "Huge", "huge", "LARGE", "Large", "large",
 				"normalsize", "small", "footnotesize", "scriptsize", "tiny":
-				// Update current font size for subsequent tokens in this scope
 				if size, ok := fontSizeEmMap[cmd]; ok {
 					currentFontSize = size
 				}
 			case "\\":
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: " ", Size: currentFontSize})
-			// Special character escapes
 			case "&", "%", "#", "_", "^", "~", "{", "}":
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: cmd, Size: currentFontSize})
 			case "ldots", "dots":
@@ -1024,16 +978,13 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 				}
 				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201D", Size: currentFontSize})
 			case "toprule", "midrule", "bottomrule", "hline":
-				// booktabs / standard table rules — silently skip
 			default:
-				// Unknown command with a brace argument: absorb the arg as text
 				if p.curToken.Type == TokenOpenBrace {
 					arg := p.parseRawArgument()
 					if strings.TrimSpace(arg) != "" {
 						elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Size: currentFontSize})
 					}
 				}
-				// Otherwise: silently skip (no nextToken needed, already advanced past cmd)
 			}
 		default:
 			p.nextToken()
@@ -1042,9 +993,6 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 	return elements
 }
 
-// parseRawMathContent reads tokens from inside a math environment and
-// reconstructs the LaTeX source as a string. It stops (and consumes) \end{envName}.
-// The star variant \end{envName*} is also accepted.
 func (p *Parser) parseRawMathContent(envName string) string {
 	var sb strings.Builder
 	baseName := strings.TrimSuffix(envName, "*")
@@ -1052,9 +1000,9 @@ func (p *Parser) parseRawMathContent(envName string) string {
 		switch p.curToken.Type {
 		case TokenCommand:
 			if p.curToken.Value == "end" {
-				p.nextToken() // consume "end"
+				p.nextToken()
 				if p.curToken.Type == TokenOpenBrace {
-					p.nextToken() // consume "{"
+					p.nextToken()
 					var name strings.Builder
 					for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
 						name.WriteString(p.curToken.Value)
@@ -1073,7 +1021,6 @@ func (p *Parser) parseRawMathContent(envName string) string {
 				}
 				continue
 			}
-			// "\" is the line-break command — its value is already "\\"
 			if strings.HasPrefix(p.curToken.Value, `\`) {
 				sb.WriteString(p.curToken.Value)
 			} else {
@@ -1104,7 +1051,6 @@ func (p *Parser) parseRawMathContent(envName string) string {
 	return strings.TrimSpace(sb.String())
 }
 
-// wrapMathEnv wraps parsed math content with the appropriate KaTeX delimiters.
 func wrapMathEnv(env, content string) string {
 	switch strings.TrimSuffix(env, "*") {
 	case "align", "eqnarray":
@@ -1116,11 +1062,8 @@ func wrapMathEnv(env, content string) string {
 	}
 }
 
-// parseTheoremBlock handles theorem-like environments: theorem, lemma, corollary,
-// proof, definition, example, remark, proposition. Reads an optional [custom title].
 func (p *Parser) parseTheoremBlock(envName string) (*Content, error) {
 	block := &Content{Type: ContentBlock, Children: []Content{}}
-	// Optional [custom subtitle/title override]
 	custom := p.parseOptionalArgString()
 	name := strings.ToUpper(envName[:1]) + envName[1:]
 	if custom != "" {
@@ -1146,10 +1089,7 @@ func (p *Parser) parseTheoremBlock(envName string) (*Content, error) {
 	return block, nil
 }
 
-// parseGenericWrapper parses wrapper environments (figure, table, center, etc.)
-// collecting child content. Returns the single child (if only one) or a bare block.
 func (p *Parser) parseGenericWrapper(envName string) (*Content, error) {
-	// Skip optional placement args like [h], [htbp]
 	_ = p.parseOptionalArgString()
 	baseEnv := strings.TrimSuffix(envName, "*")
 	wrapper := &Content{Type: ContentBlock, Children: []Content{}}
@@ -1162,13 +1102,11 @@ func (p *Parser) parseGenericWrapper(envName string) (*Content, error) {
 				}
 				continue
 			}
-			// Skip decoration commands that have no visual equivalent
 			if p.curToken.Value == "centering" || p.curToken.Value == "label" ||
 				p.curToken.Value == "captionof" {
 				p.skipUnknownCommand()
 				continue
 			}
-			// \caption[short]{text} — render as a centered paragraph
 			if p.curToken.Value == "caption" {
 				captionText := p.parseRawArgument()
 				if captionText != "" {
@@ -1323,14 +1261,11 @@ func (p *Parser) parseOverlayEnv(envName string) (*Content, error) {
 	return container, nil
 }
 
-// readBraceGroupRaw reads a {brace-group} with depth-tracking on the token
-// stream and returns the raw concatenated content (without the outer braces).
-// Unlike parseRawArgument it correctly handles nested {}.
 func (p *Parser) readBraceGroupRaw() string {
 	if p.curToken.Type != TokenOpenBrace {
 		return ""
 	}
-	p.nextToken() // consume opening {
+	p.nextToken()
 	var sb strings.Builder
 	depth := 1
 	for depth > 0 && p.curToken.Type != TokenEOF {
@@ -1357,8 +1292,6 @@ func (p *Parser) readBraceGroupRaw() string {
 	return sb.String()
 }
 
-// extractLstOption searches opts for key=value or key={value} and returns
-// the trimmed value, or "" when not found.
 func extractLstOption(opts, key string) string {
 	idx := strings.Index(opts, key+"=")
 	if idx == -1 {
@@ -1378,8 +1311,6 @@ func extractLstOption(opts, key string) string {
 	return strings.TrimSpace(after[:end])
 }
 
-// tokenRaw reconstructs the approximate raw LaTeX source for a single token.
-// Used to recover lookahead tokens that were consumed before a raw-read.
 func tokenRaw(t Token) string {
 	switch t.Type {
 	case TokenCommand:
@@ -1408,9 +1339,6 @@ func tokenRaw(t Token) string {
 	}
 }
 
-// parseCustomCodeBlock handles a user-defined verbatim-listing environment
-// registered via \newtcblisting or \lstnewenvironment.
-// If the env declares nargs > 0 the first argument is used as the block title.
 func (p *Parser) parseCustomCodeBlock(envName string, cce customCodeEnvInfo) (*Content, error) {
 	title := ""
 	if cce.nargs > 0 {
@@ -1420,20 +1348,13 @@ func (p *Parser) parseCustomCodeBlock(envName string, cce customCodeEnvInfo) (*C
 		}
 	}
 	endMarker := fmt.Sprintf(`\end{%s}`, envName)
-	// After parsing the title arg the 2-token lookahead may have consumed part of
-	// the end marker.  The typical case: readText() swallows the entire code body
-	// as one token (curToken), then \end becomes peekToken, leaving the raw buffer
-	// positioned right at {envName}.  Detect this split and handle it correctly.
 	var codeContent string
 	closingArg := "{" + envName + "}"
 	if p.peekToken.Type == TokenCommand && p.peekToken.Value == "end" &&
 		strings.HasPrefix(p.l.PeekRaw(len(closingArg)), closingArg) {
-		// Split case: \end is in the lookahead, {envName} is at the raw head.
 		codeContent = tokenRaw(p.curToken)
-		_ = p.l.ReadRawUntil(closingArg) // consumes "{envName}" from raw buffer
+		_ = p.l.ReadRawUntil(closingArg)
 	} else {
-		// Normal case: the end marker is entirely in the raw buffer (or the code
-		// body is split across multiple tokens, so we need to prepend the prefix).
 		prefix := tokenRaw(p.curToken) + tokenRaw(p.peekToken)
 		rawPart := p.l.ReadRawUntil(endMarker)
 		codeContent = prefix + rawPart
@@ -1456,9 +1377,6 @@ func (p *Parser) parseCustomCodeBlock(envName string, cce customCodeEnvInfo) (*C
 }
 
 func (p *Parser) parseVerbatim() (*Content, error) {
-	// parseRawArgument() advanced the lookahead twice after consuming {verbatim},
-	// so curToken and peekToken already hold the first two tokens of the verbatim
-	// body. Reconstruct their raw form and prepend it to the ReadRawUntil output.
 	prefix := tokenRaw(p.curToken) + tokenRaw(p.peekToken)
 	raw := p.l.ReadRawUntil(`\end{verbatim}`)
 	p.curToken = p.l.NextToken()
@@ -1493,7 +1411,6 @@ func (p *Parser) parseLstlisting(envName string) (*Content, error) {
 		lang = p.parseRawArgument()
 	}
 	endMarker := fmt.Sprintf(`\end{%s}`, envName)
-	// Apply the same split-marker detection used by parseCustomCodeBlock.
 	var codeContent string
 	closingArg := "{" + envName + "}"
 	if p.peekToken.Type == TokenCommand && p.peekToken.Value == "end" &&
@@ -1548,20 +1465,15 @@ func (p *Parser) parseTabular() (*Content, error) {
 	return table, nil
 }
 
-// parseRawInline parses a raw LaTeX string (e.g. a table cell) as inline
-// content by spinning up a temporary lexer. The caller's lexer state is
-// fully preserved.
 func (p *Parser) parseRawInline(raw string) []InlineContent {
 	if strings.TrimSpace(raw) == "" {
 		return []InlineContent{{Type: InlinePureText, Value: raw}}
 	}
-	// Save current lexer state.
 	savedL := p.l
 	savedCur := p.curToken
 	savedPeek := p.peekToken
 	savedStack := p.lexerStack
 
-	// Set up a temporary lexer for the raw string.
 	p.l = NewLexer(raw)
 	p.lexerStack = nil
 	p.curToken = p.l.NextToken()
@@ -1571,7 +1483,6 @@ func (p *Parser) parseRawInline(raw string) []InlineContent {
 		return p.curToken.Type == TokenEOF
 	})
 
-	// Restore lexer state.
 	p.l = savedL
 	p.curToken = savedCur
 	p.peekToken = savedPeek
@@ -1583,23 +1494,21 @@ func (p *Parser) parseRawInline(raw string) []InlineContent {
 	return elements
 }
 
-// parseGraphicsPaths parses \graphicspath{{dir1/}{dir2/}} and stores the
-// directories in p.graphicPaths for use when resolving \includegraphics paths.
 func (p *Parser) parseGraphicsPaths() {
-	p.nextToken() // consume \graphicspath command token
+	p.nextToken()
 	if p.curToken.Type != TokenOpenBrace {
 		return
 	}
-	p.nextToken() // consume outer {
+	p.nextToken()
 	for p.curToken.Type == TokenOpenBrace {
-		p.nextToken() // consume inner {
+		p.nextToken()
 		var dir strings.Builder
 		for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
 			dir.WriteString(p.curToken.Value)
 			p.nextToken()
 		}
 		if p.curToken.Type == TokenCloseBrace {
-			p.nextToken() // consume inner }
+			p.nextToken()
 		}
 		d := strings.TrimSpace(filepath.FromSlash(dir.String()))
 		if d != "" && d != "." {
@@ -1607,21 +1516,17 @@ func (p *Parser) parseGraphicsPaths() {
 		}
 	}
 	if p.curToken.Type == TokenCloseBrace {
-		p.nextToken() // consume outer }
+		p.nextToken()
 	}
 }
 
-// resolveGraphicsPath resolves a raw image path by trying each graphicsPath
-// directory. Returns the resolved path relative to baseDir, or rawPath as-is.
 func (p *Parser) resolveGraphicsPath(rawPath string) string {
 	if rawPath == "" || p.baseDir == "" {
 		return rawPath
 	}
-	// Check as-is first
 	if _, err := os.Stat(filepath.Join(p.baseDir, rawPath)); err == nil {
 		return rawPath
 	}
-	// Try each graphicsPath prefix
 	for _, gp := range p.graphicPaths {
 		candidate := filepath.Join(gp, rawPath)
 		if _, err := os.Stat(filepath.Join(p.baseDir, candidate)); err == nil {
@@ -1642,7 +1547,6 @@ func (p *Parser) parseImage() *Content {
 			p.nextToken()
 		}
 		p.nextToken()
-		// Extract width= value (e.g. width=0.8\linewidth, width=0.5\textwidth)
 		optsStr := opts.String()
 		if idx := strings.Index(optsStr, "width="); idx != -1 {
 			after := optsStr[idx+6:]
@@ -1652,7 +1556,6 @@ func (p *Parser) parseImage() *Content {
 			} else {
 				imgWidth = strings.TrimSpace(after[:end])
 			}
-			// Convert \linewidth / \textwidth fractions to percentage
 			for _, unit := range []string{`\linewidth`, `\textwidth`, `\columnwidth`} {
 				if strings.HasSuffix(imgWidth, unit) {
 					frac := strings.TrimSuffix(imgWidth, unit)
@@ -1679,10 +1582,8 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 		Ordered:  listType == "enumerate",
 		Children: []Content{},
 	}
-	// Skip optional [label/spacing] args
 	_ = p.parseOptionalArgString()
 
-	// Stop condition shared by all \item inline parsing
 	itemStop := func() bool {
 		return p.curToken.Type == TokenEOF ||
 			(p.curToken.Type == TokenCommand &&
@@ -1702,21 +1603,18 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 			if p.curToken.Value == "item" {
 				p.nextToken()
 				itemOverlay := p.parseOverlaySpecification()
-				// Skip optional [custom bullet]
 				if p.curToken.Type == TokenOpenBracket {
 					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
 						p.nextToken()
 					}
 					p.nextToken()
 				}
-				// Collect inline text
 				inlineElements := p.parseInlineTokens(itemStop)
 				item := Content{
 					Type:    ContentRichText,
 					Overlay: itemOverlay,
 					Inline:  inlineElements,
 				}
-				// Collect any nested structures (\begin{itemize}, \begin{enumerate}, etc.)
 				for p.curToken.Type == TokenCommand && p.curToken.Value == "begin" {
 					nested, err := p.parseContent()
 					if err != nil {
@@ -1725,7 +1623,6 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 					if nested != nil {
 						item.Children = append(item.Children, *nested)
 					}
-					// More inline text after the nested env
 					more := p.parseInlineTokens(itemStop)
 					item.Inline = append(item.Inline, more...)
 				}
@@ -1742,11 +1639,8 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 	return list, nil
 }
 
-// parseDescriptionList handles \begin{description}...\end{description}.
-// Each \item[label] becomes a rich-text item with a bold label prefix.
 func (p *Parser) parseDescriptionList() (*Content, error) {
 	list := &Content{Type: ContentList, Ordered: false, Children: []Content{}}
-	// Skip optional args
 	_ = p.parseOptionalArgString()
 
 	itemStop := func() bool {
@@ -1768,7 +1662,6 @@ func (p *Parser) parseDescriptionList() (*Content, error) {
 			if p.curToken.Value == "item" {
 				p.nextToken()
 				itemOverlay := p.parseOverlaySpecification()
-				// Read the mandatory [label] for description items
 				label := ""
 				if p.curToken.Type == TokenOpenBracket {
 					p.nextToken()
@@ -1782,9 +1675,7 @@ func (p *Parser) parseDescriptionList() (*Content, error) {
 					}
 					label = strings.TrimSpace(lb.String())
 				}
-				// Inline content follows the label
 				inlineElements := p.parseInlineTokens(itemStop)
-				// Prepend bold label
 				if label != "" {
 					labelEl := InlineContent{Type: InlineBold, Value: label + ":"}
 					inlineElements = append([]InlineContent{labelEl, {Type: InlinePureText, Value: " "}}, inlineElements...)
@@ -1794,7 +1685,6 @@ func (p *Parser) parseDescriptionList() (*Content, error) {
 					Overlay: itemOverlay,
 					Inline:  inlineElements,
 				}
-				// Nested structures
 				for p.curToken.Type == TokenCommand && p.curToken.Value == "begin" {
 					nested, err := p.parseContent()
 					if err != nil {

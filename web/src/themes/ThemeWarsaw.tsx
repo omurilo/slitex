@@ -1,4 +1,3 @@
-// Warsaw — classic Beamer theme: deep navy/indigo header, round progress dots, orange accent.
 import React from 'react';
 import type { ThemeFrameProps } from './index';
 import { ContentScaler } from '../components/ContentScaler';
@@ -60,12 +59,12 @@ export const ThemeWarsawFrame: React.FC<ThemeFrameProps> = ({
   if (frame.titlePage) {
     return (
       <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: `linear-gradient(160deg, ${NAVY} 0%, ${STEEL} 100%)`, fontFamily: "Georgia, serif", color: WHITE }}>
-        {/* Top bar */}
+        
         <div style={{ padding: '0.6em 1.8em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.28)', flexShrink: 0 }}>
           <span style={{ fontSize: '0.5em', fontFamily: 'sans-serif', opacity: 0.8 }}>{presentationAuthor}</span>
           <Dots total={totaslitexs} current={slideIndex} />
         </div>
-        {/* Center content */}
+        
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5em 4em', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2.6em', fontWeight: 700, color: WHITE, margin: 0, lineHeight: 1.1, fontFamily: 'sans-serif' }}>
             {presentationTitle}
@@ -83,12 +82,12 @@ export const ThemeWarsawFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: WHITE, color: '#1a1a2e', fontFamily: "Georgia, serif" }}>
-      {/* Top navigation bar */}
+      
       <div style={{ background: `linear-gradient(90deg, ${NAVY}, ${MID})`, padding: '0.48em 1.8em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.48em', fontFamily: 'sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{presentationTitle}</span>
         <Dots total={totaslitexs} current={slideIndex} />
       </div>
-      {/* Title band */}
+      
       {frame.title && (
         <div style={{ background: `linear-gradient(90deg, ${MID}, ${STEEL})`, padding: '0.7em 1.8em', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.6em', fontWeight: 700, color: WHITE, margin: 0, lineHeight: 1.1, fontFamily: 'sans-serif' }}>
@@ -97,11 +96,11 @@ export const ThemeWarsawFrame: React.FC<ThemeFrameProps> = ({
           {frame.subtitle && <p style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.85)', margin: '0.2em 0 0', fontFamily: 'sans-serif', fontStyle: 'italic' }}>{frame.subtitle}</p>}
         </div>
       )}
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '0.9em 1.8em' }}>
         {children}
       </ContentScaler>
-      {/* Footer */}
+      
       <div style={{ background: `linear-gradient(90deg, ${NAVY}, ${MID})`, padding: '0.38em 1.8em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.72)', fontSize: '0.46em', fontFamily: 'sans-serif', flexShrink: 0 }}>
         <span style={{ maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationAuthor}</span>
         <span style={{ maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{presentationTitle}</span>

@@ -97,14 +97,14 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
 
   return (
     <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', color: '#1a1a2e', fontFamily: "Georgia, 'Times New Roman', serif" }}>
-      {/* Top bar: dark teal with presentation meta */}
+      
       <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '0.62em 2.31em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
         <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.54em', fontFamily: 'sans-serif', fontWeight: 500 }}>{presentationTitle}</span>
         <SlideProgress total={totaslitexs} current={slideIndex} />
         <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.5em', fontFamily: 'sans-serif' }}>{presentationAuthor}</span>
       </div>
 
-      {/* Slide title band */}
+      
       {frame.title && (
         <div style={{ background: `linear-gradient(90deg, ${TEAL_MID}, ${TEAL_LIGHT})`, padding: '0.77em 2.31em', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.5em', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.1, textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
@@ -118,12 +118,12 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
         </div>
       )}
 
-      {/* Content */}
+      
       <ContentScaler style={{ flex: 1, padding: '1.08em 2.31em' }}>
         {children}
       </ContentScaler>
 
-      {/* Footer */}
+      
       <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '0.46em 2.31em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '0.46em', fontFamily: 'sans-serif', fontWeight: 500, flexShrink: 0 }}>
         <span>{presentationAuthor}</span>
         <span style={{ maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{presentationTitle}</span>

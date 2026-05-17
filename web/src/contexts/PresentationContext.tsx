@@ -10,9 +10,9 @@ export interface PresentationContextValue {
   presentationDate: string;
   bibliography: BibEntry[];
   citations: CitationRef[];
-  /** Returns the sequential citation number (1-based) for a given key, or 0 if unknown. */
+  
   citationNumber: (key: string) => number;
-  /** Returns the BibEntry for a given key, or undefined. */
+  
   bibEntry: (key: string) => BibEntry | undefined;
 }
 
@@ -33,7 +33,6 @@ export function usePresentationContext() {
   return useContext(PresentationContext);
 }
 
-/** Build a PresentationContextValue from raw AST data. */
 export function usePresentationContextValue(
   sections: Section[],
   presentationTitle: string,
