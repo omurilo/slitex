@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { type PresentationAST } from '../types';
 import { useSyncSlides } from '../hooks/useSyncSlides';
-import { SlideRenderer } from '../components/SlideRenderer';
+import { ViewProjector } from './ViewProjector';
 
 interface PresenterProps {
   ast: PresentationAST;
@@ -54,131 +54,132 @@ export const ViewPresenter: React.FC<PresenterProps> = ({ ast, initiaslitex = 0 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNext, handlePrev]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = (e: React.TouchEvent) => {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 50) {
-      if (dx < 0) handleNext();
-      else handlePrev();
-    }
+    if (Math.abs(dx) > 50) { if (dx < 0) handleNext(); else handlePrev(); }
   };
 
-  if (!activeFrame) return <div className="p-8 text-center">Nenhum slide processado na AST.</div>;
+  if (!activeFrame) return (
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d0d', color: 'rgba(255,255,255,0.4)', fontFamily: 'sans-serif' }}>
+      Nenhum slide processado na AST.
+    </div>
+  );
+
+  const atStart = currentSlide === 0 && currentStep === 1;
+  const atEnd = currentSlide === frames.length - 1 && currentStep >= (activeFrame.maxSteps ?? 1);
 
   return (
     <div
-      className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden"
+      style={{ height: '100vh', width: '100vw', background: '#0d0d0d', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', overflow: 'hidden', color: '#fff' }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Header */}
-      <header className="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            Modo Apresentador
-          </span>
-          <h1 className="font-semibold text-sm max-w-md truncate text-slate-400">{ast.title}</h1>
+      {/* ── Top bar ── */}
+      <header style={{ height: 52, flexShrink: 0, background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.22)', textTransform: 'uppercase' as const }}>slitex</span>
+          <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)', letterSpacing: '0.04em', flexShrink: 0 }}>presenter</span>
+          {ast.title && <>
+            <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{ast.title}</span>
+          </>}
         </div>
-        <div className="flex items-center gap-6">
-          <div className="text-center">
-            <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Tempo</p>
-            <p className="font-mono text-xl text-emerald-400 font-bold">{formatTime(seconds)}</p>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+          <div style={{ textAlign: 'center' as const }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 1 }}>tempo</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: '#4ade80', lineHeight: 1 }}>{formatTime(seconds)}</div>
           </div>
-          <div className="text-center">
-            <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Slide</p>
-            <p className="font-mono text-xl text-indigo-400 font-bold">{currentSlide + 1} / {frames.length}</p>
-          </div>
-          {(activeFrame.maxSteps ?? 1) > 1 && (
-            <div className="text-center">
-              <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Step</p>
-              <p className="font-mono text-xl text-amber-400 font-bold">{currentStep} / {activeFrame.maxSteps}</p>
+          <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ textAlign: 'center' as const }}>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 1 }}>slide</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: '#818cf8', lineHeight: 1 }}>
+              {currentSlide + 1}<span style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}> / {frames.length}</span>
             </div>
-          )}
+          </div>
+          {(activeFrame.maxSteps ?? 1) > 1 && <>
+            <span style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ textAlign: 'center' as const }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 1 }}>step</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 20, fontWeight: 700, color: '#f59e0b', lineHeight: 1 }}>
+                {currentStep}<span style={{ fontSize: 13, color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}> / {activeFrame.maxSteps}</span>
+              </div>
+            </div>
+          </>}
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-hidden">
-        {/* Current slide preview */}
-        <div className="col-span-7 flex flex-col gap-3 h-full overflow-hidden">
-          <p className="text-xs font-bold uppercase text-slate-500 tracking-widest">Tela Ativa no Projetor</p>
-          <div className="flex-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl p-8 border border-slate-800 shadow-2xl flex flex-col overflow-y-auto">
-            <h2 className="text-3xl font-black tracking-tight mb-1">{activeFrame.title}</h2>
-            {activeFrame.subtitle && (
-              <h3 className="text-lg text-indigo-600 dark:text-indigo-400 font-medium mb-4">{activeFrame.subtitle}</h3>
-            )}
-            <div className="flex-1">
-              {activeFrame.content.map((node, i) => (
-                <SlideRenderer key={i} node={node} currentStep={currentStep} theme={ast.theme} />
-              ))}
+      {/* ── Main ── */}
+      <main style={{ flex: 1, display: 'flex', gap: 14, padding: 14, overflow: 'hidden', minHeight: 0 }}>
+
+        {/* Left: current slide render */}
+        <div style={{ flex: '0 0 63%', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', flexShrink: 0 }}>Projetor ativo</span>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+            <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, overflow: 'hidden', boxShadow: '0 4px 32px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <ViewProjector ast={ast} />
             </div>
           </div>
         </div>
 
-        {/* Right panel: next + notes */}
-        <div className="col-span-5 flex flex-col gap-6 h-full overflow-hidden">
+        {/* Right: next slide + notes */}
+        <div style={{ flex: '1 1 37%', display: 'flex', flexDirection: 'column', gap: 12, overflow: 'hidden', minWidth: 0 }}>
+
           {/* Next slide */}
-          <div className="flex flex-col gap-3 h-[40%] overflow-hidden">
-            <p className="text-xs font-bold uppercase text-slate-500 tracking-widest">Próximo Slide</p>
-            <div className="flex-1 bg-slate-900/60 rounded-2xl p-6 border border-slate-800 opacity-70 flex flex-col overflow-y-auto">
-              {nextFrame ? (
-                <>
-                  <h2 className="text-xl font-bold mb-1">{nextFrame.title}</h2>
-                  {nextFrame.subtitle && (
-                    <h3 className="text-sm text-indigo-400 mb-3">{nextFrame.subtitle}</h3>
-                  )}
-                  <div className="text-xs text-slate-500 line-clamp-3">
-                    {nextFrame.content
-                      .flatMap((n) => n.inline ?? [])
-                      .map((il) => il.value)
-                      .join(' ')
-                      .slice(0, 150)}
-                  </div>
-                </>
-              ) : (
-                <p className="m-auto text-slate-500 italic font-medium">Fim da apresentação</p>
-              )}
-            </div>
+          <div style={{ flexShrink: 0, background: '#141414', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '12px 14px' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: 8 }}>Próximo slide</span>
+            {nextFrame ? (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'rgba(255,255,255,0.6)', lineHeight: 1.3, marginBottom: 3 }}>{nextFrame.title || '—'}</div>
+                {nextFrame.subtitle && <div style={{ fontSize: 12, color: '#818cf8', marginBottom: 4 }}>{nextFrame.subtitle}</div>}
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', lineHeight: 1.5 }}>
+                  {nextFrame.content.flatMap(n => n.inline ?? []).map(il => il.value).join(' ').slice(0, 140)}
+                </div>
+              </div>
+            ) : (
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>Fim da apresentação</span>
+            )}
           </div>
 
-          {/* Speaker notes */}
-          <div className="flex flex-col gap-3 flex-1 overflow-hidden">
-            <p className="text-xs font-bold uppercase text-slate-500 tracking-widest">Notas do Apresentador</p>
-            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-5 font-sans text-slate-300 leading-relaxed overflow-y-auto">
+          {/* Notes */}
+          <div style={{ flex: 1, background: '#141414', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', padding: '12px 14px', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: 8, flexShrink: 0 }}>Notas</span>
+            <div style={{ flex: 1, overflowY: 'auto' as const }}>
               {activeFrame.notes ? (
-                <p className="text-base whitespace-pre-wrap">{activeFrame.notes}</p>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{activeFrame.notes}</p>
               ) : (
-                <p className="text-slate-600 italic text-sm">Sem notas para este slide.</p>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>Sem notas para este slide.</span>
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Footer controls */}
-      <footer className="bg-slate-900/40 border-t border-slate-800 px-6 py-4 flex justify-between items-center">
-        <div className="flex gap-2">
-          <kbd className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 font-mono">←</kbd>
-          <kbd className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-xs text-slate-400 font-mono">→</kbd>
-          <span className="text-xs text-slate-500 my-auto ml-2">Navegar por teclado ou botões</span>
+      {/* ── Footer ── */}
+      <footer style={{ height: 52, flexShrink: 0, background: '#141414', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {['←', '→'].map(k => (
+            <span key={k} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 4, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.05)', fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{k}</span>
+          ))}
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', marginLeft: 6 }}>ou use os botões</span>
         </div>
-        <div className="flex gap-4">
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={handlePrev}
-            disabled={currentSlide === 0 && currentStep === 1}
-            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm transition-all active:scale-95 disabled:opacity-40"
-          >
-            Anterior
-          </button>
+            disabled={atStart}
+            style={{ padding: '6px 18px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.06)', color: atStart ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.65)', fontSize: 13, cursor: atStart ? 'default' : 'pointer', fontWeight: 500 }}
+            onMouseEnter={e => { if (!atStart) { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; } }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = atStart ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.65)'; }}
+          >← Anterior</button>
           <button
             onClick={handleNext}
-            disabled={currentSlide === frames.length - 1 && currentStep >= (activeFrame.maxSteps ?? 1)}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all shadow-md active:scale-95 disabled:opacity-40"
-          >
-            Avançar
-          </button>
+            disabled={atEnd}
+            style={{ padding: '6px 18px', borderRadius: 8, border: 'none', background: atEnd ? 'rgba(99,102,241,0.35)' : '#6366f1', color: atEnd ? 'rgba(255,255,255,0.3)' : '#fff', fontSize: 13, cursor: atEnd ? 'default' : 'pointer', fontWeight: 600 }}
+            onMouseEnter={e => { if (!atEnd) e.currentTarget.style.background = '#4f46e5'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = atEnd ? 'rgba(99,102,241,0.35)' : '#6366f1'; }}
+          >Avançar →</button>
         </div>
       </footer>
     </div>

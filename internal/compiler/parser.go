@@ -18,6 +18,7 @@ type Section struct {
 
 type Presentation struct {
 	Title        string        `json:"title"`
+	Subtitle     string        `json:"subtitle,omitempty"`
 	Author       string        `json:"author"`
 	Institute    string        `json:"institute,omitempty"`
 	Date         string        `json:"date,omitempty"`
@@ -57,6 +58,7 @@ const (
 	ContentTableRow     ContentType = "tablerow"
 	ContentTOC          ContentType = "toc"
 	ContentSpacer       ContentType = "spacer"
+	ContentVFill        ContentType = "vfill"
 	ContentQuote        ContentType = "quote"
 	ContentBibliography ContentType = "bibliography"
 )
@@ -79,6 +81,21 @@ type InlineContent struct {
 	Value   string     `json:"value"`
 	Color   string     `json:"color,omitempty"`
 	Overlay string     `json:"overlay,omitempty"`
+	Size    string     `json:"size,omitempty"`
+}
+
+// fontSizeEmMap maps LaTeX font-size commands to CSS em values.
+var fontSizeEmMap = map[string]string{
+	"Huge":         "2.5em",
+	"huge":         "2em",
+	"LARGE":        "1.7em",
+	"Large":        "1.5em",
+	"large":        "1.2em",
+	"normalsize":   "1em",
+	"small":        "0.85em",
+	"footnotesize": "0.75em",
+	"scriptsize":   "0.65em",
+	"tiny":         "0.5em",
 }
 
 type Content struct {
@@ -91,12 +108,14 @@ type Content struct {
 	Overlay  string          `json:"overlay,omitempty"`
 	Children []Content       `json:"children,omitempty"`
 	Ordered  bool            `json:"ordered,omitempty"`
+	Centered bool            `json:"centered,omitempty"`
 }
 
 type Parser struct {
 	l             *Lexer
 	lexerStack    []lexerFrame
 	baseDir       string
+	graphicPaths  []string
 	curToken      Token
 	peekToken     Token
 	citationIndex int
@@ -232,8 +251,17 @@ func maxStepsFromContent(c Content) int {
 	return max
 }
 
-func (p *Parser) ParsePresentation() (*Presentation, error) {
-	pres := &Presentation{
+func (p *Parser) ParsePresentation() (pres *Presentation, err error) {
+	// Recover from any unexpected panics so the server always returns an error
+	// response instead of hanging or crashing the handler goroutine.
+	defer func() {
+		if r := recover(); r != nil {
+			pres = nil
+			err = fmt.Errorf("internal parser error: %v", r)
+		}
+	}()
+
+	pres = &Presentation{
 		Frames:   []Frame{},
 		Sections: []Section{},
 		Theme:    "default",
@@ -244,18 +272,19 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 		if p.curToken.Type == TokenCommand {
 			switch p.curToken.Value {
 			case "title":
-				pres.Title = p.parseRawArgument()
+				pres.Title = p.parseMetadataArg("")
+			case "subtitle":
+				pres.Subtitle = p.parseMetadataArg("")
 			case "author":
-				pres.Author = p.parseRawArgument()
+				pres.Author = p.parseMetadataArg("")
 			case "institute":
-				pres.Institute = p.parseRawArgument()
+				pres.Institute = p.parseMetadataArg("")
 			case "date":
-				d := p.parseRawArgument()
-				if d == "today" || d == "" {
-					pres.Date = formatDate(time.Now(), pres.Language)
-				} else {
-					pres.Date = d
+				d := p.parseMetadataArg(pres.Language)
+				if d == "" {
+					d = formatDate(time.Now(), pres.Language)
 				}
+				pres.Date = d
 			case "usetheme":
 				pres.Theme = strings.ToLower(p.parseRawArgument())
 			case "section":
@@ -292,6 +321,9 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 						}
 					}
 				}
+			case "graphicspath":
+				p.parseGraphicsPaths()
+				continue
 			case "addbibresource", "bibliography":
 				resource := p.parseRawArgument()
 				if resource != "" {
@@ -337,6 +369,85 @@ func (p *Parser) ParsePresentation() (*Presentation, error) {
 }
 
 // parseRawArgument reads {content}, skipping an optional leading [...].
+// parseMetadataArg reads a \command[opt]{content} metadata argument and
+// returns a clean human-readable string. It correctly handles nested braces,
+// converts \\ to newlines, strips LaTeX spacing commands (\smallskip etc.),
+// unwraps inline formatting wrappers (\textit, \textbf, \emph, etc.) so
+// their content passes through without the surrounding braces, and expands
+// \today to a formatted date using the supplied language code.
+func (p *Parser) parseMetadataArg(lang string) string {
+	if p.curToken.Type == TokenCommand {
+		p.nextToken()
+	}
+	// Skip optional [short form]
+	if p.curToken.Type == TokenOpenBracket {
+		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			p.nextToken()
+		}
+		p.nextToken()
+	}
+	if p.curToken.Type != TokenOpenBrace {
+		return ""
+	}
+	p.nextToken() // consume opening {
+	var sb strings.Builder
+	depth := 1
+	for depth > 0 && p.curToken.Type != TokenEOF {
+		switch p.curToken.Type {
+		case TokenOpenBrace:
+			depth++
+			p.nextToken()
+		case TokenCloseBrace:
+			depth--
+			p.nextToken()
+		case TokenText:
+			sb.WriteString(p.curToken.Value)
+			p.nextToken()
+		case TokenMath:
+			sb.WriteString(p.curToken.Value)
+			p.nextToken()
+		case TokenCommand:
+			cmd := p.curToken.Value
+			p.nextToken()
+			switch cmd {
+			case "\\":
+				sb.WriteString("\n")
+			case "today":
+				sb.WriteString(formatDate(time.Now(), lang))
+			case "smallskip", "medskip", "bigskip", "vspace", "hspace",
+				"noindent", "newline", "par":
+				// Skip spacing commands and any brace argument they may take.
+				if p.curToken.Type == TokenOpenBrace {
+					for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
+						p.nextToken()
+					}
+					if p.curToken.Type == TokenCloseBrace {
+						p.nextToken()
+					}
+				}
+			case "textit", "textbf", "emph", "textrm", "textsf", "texttt",
+				"text", "mbox", "textsc", "textup", "textnormal":
+				// Formatting wrappers: skip the command name; the brace content
+				// is captured naturally via the depth counter above.
+			case "and":
+				sb.WriteString(" \u0026 ")
+			case "&", "%", "#", "_":
+				sb.WriteString(cmd)
+			case "ldots", "dots":
+				sb.WriteString("…")
+			case "textendash":
+				sb.WriteString("–")
+			case "textemdash":
+				sb.WriteString("—")
+				// All other unknown commands are silently skipped.
+			}
+		default:
+			p.nextToken()
+		}
+	}
+	return strings.TrimSpace(sb.String())
+}
+
 func (p *Parser) parseRawArgument() string {
 	if p.curToken.Type == TokenCommand {
 		p.nextToken()
@@ -391,7 +502,8 @@ func (p *Parser) skipUnknownCommand() {
 	}
 }
 
-// skipEnvironment skips a \begin{env}...\end{env} block.
+// skipEnvironment skips a \begin{env}...\end{env} block, correctly
+// handling nested environments with the same name (depth tracking).
 func (p *Parser) skipEnvironment(envName string) {
 	// Skip any extra args like {99} in \begin{thebibliography}{99}
 	for p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
@@ -407,16 +519,26 @@ func (p *Parser) skipEnvironment(envName string) {
 			p.nextToken()
 		}
 	}
-	// Skip body until \end{envName}
-	for p.curToken.Type != TokenEOF {
-		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
-			arg := p.parseRawArgument()
-			if arg == envName {
-				return
+	// Skip body, tracking depth for nested same-name environments.
+	depth := 1
+	for p.curToken.Type != TokenEOF && depth > 0 {
+		if p.curToken.Type == TokenCommand {
+			switch p.curToken.Value {
+			case "begin":
+				arg := p.parseRawArgument()
+				if arg == envName {
+					depth++
+				}
+				continue
+			case "end":
+				arg := p.parseRawArgument()
+				if arg == envName {
+					depth--
+				}
+				continue
 			}
-		} else {
-			p.nextToken()
 		}
+		p.nextToken()
 	}
 }
 
@@ -424,6 +546,7 @@ func (p *Parser) parseFrame() (Frame, error) {
 	var frame Frame
 	pauseStep := 1
 	maxStep := 1
+	pendingCentered := false
 
 	_ = p.parseOverlaySpecification()
 
@@ -509,6 +632,15 @@ frameLoop:
 				p.nextToken()
 				frame.Content = append(frame.Content, Content{Type: ContentSpacer})
 				continue
+			case "vfill":
+				p.nextToken()
+				frame.Content = append(frame.Content, Content{Type: ContentVFill})
+				continue
+			case "centering":
+				// Set a flag on the next content item; handled via a pending state
+				p.nextToken()
+				pendingCentered = true
+				continue
 			case "vspace", "vskip":
 				p.nextToken()
 				if p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
@@ -526,6 +658,10 @@ frameLoop:
 		if content != nil {
 			if pauseStep > 1 && content.Overlay == "" {
 				content.Overlay = fmt.Sprintf("%d-", pauseStep)
+			}
+			if pendingCentered {
+				content.Centered = true
+				pendingCentered = false
 			}
 			frame.Content = append(frame.Content, *content)
 			if s := maxStepsFromContent(*content); s > maxStep {
@@ -553,6 +689,8 @@ func (p *Parser) parseContent() (*Content, error) {
 				return p.parseColumn()
 			case "itemize", "enumerate":
 				return p.parseSliceList(env)
+			case "description":
+				return p.parseDescriptionList()
 			case "onlyenv", "uncoverenv", "visibleenv":
 				return p.parseOverlayEnv(env)
 			case "verbatim":
@@ -563,6 +701,26 @@ func (p *Parser) parseContent() (*Content, error) {
 				return p.parseTabular()
 			case "quote", "quotation", "verse":
 				return p.parseQuote(env)
+			// Math display environments
+			case "equation", "equation*", "align", "align*",
+				"gather", "gather*", "multline", "multline*",
+				"eqnarray", "eqnarray*":
+				mathContent := p.parseRawMathContent(env)
+				if mathContent == "" {
+					return nil, nil
+				}
+				wrapped := wrapMathEnv(env, mathContent)
+				return &Content{
+					Type:   ContentRichText,
+					Inline: []InlineContent{{Type: InlineMathMode, Value: wrapped}},
+				}, nil
+			// Theorem-like environments
+			case "theorem", "lemma", "corollary", "proof",
+				"definition", "example", "remark", "proposition":
+				return p.parseTheoremBlock(env)
+			// Wrapper environments: parse children, unwrap if single
+			case "figure", "figure*", "table", "table*", "center":
+				return p.parseGenericWrapper(env)
 			case "thebibliography":
 				p.skipEnvironment("thebibliography")
 				return &Content{Type: ContentBibliography}, nil
@@ -618,6 +776,21 @@ func (p *Parser) parseContent() (*Content, error) {
 			return nil, nil
 		case "end":
 			return nil, nil
+		case "bigskip", "medskip", "smallskip":
+			p.nextToken()
+			return &Content{Type: ContentSpacer}, nil
+		case "vfill":
+			p.nextToken()
+			return &Content{Type: ContentVFill}, nil
+		case "vspace", "vskip":
+			p.nextToken()
+			if p.curToken.Type == TokenOpenBrace || p.curToken.Type == TokenOpenBracket {
+				p.skipUnknownCommand()
+			}
+			return &Content{Type: ContentSpacer}, nil
+		case "centering":
+			p.nextToken()
+			return nil, nil
 		}
 	}
 
@@ -645,18 +818,35 @@ func (p *Parser) parseContent() (*Content, error) {
 
 func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 	var elements []InlineContent
+	// Track font size through LaTeX scopes { ... }
+	currentFontSize := ""
+	var fontSizeStack []string
+
 	for !stopCondition() {
 		switch p.curToken.Type {
 		case TokenText:
 			text := p.curToken.Value
 			p.nextToken()
 			if strings.TrimSpace(text) != "" {
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: text})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: text, Size: currentFontSize})
 			}
 		case TokenMath:
 			val := p.curToken.Value
 			p.nextToken()
-			elements = append(elements, InlineContent{Type: InlineMathMode, Value: val})
+			elements = append(elements, InlineContent{Type: InlineMathMode, Value: val, Size: currentFontSize})
+		case TokenOpenBrace:
+			// Push current size onto the scope stack (groups inherit parent size)
+			fontSizeStack = append(fontSizeStack, currentFontSize)
+			p.nextToken()
+		case TokenCloseBrace:
+			// Restore size from the enclosing scope
+			if len(fontSizeStack) > 0 {
+				currentFontSize = fontSizeStack[len(fontSizeStack)-1]
+				fontSizeStack = fontSizeStack[:len(fontSizeStack)-1]
+			} else {
+				currentFontSize = ""
+			}
+			p.nextToken()
 		case TokenCommand:
 			cmd := p.curToken.Value
 			p.nextToken()
@@ -664,21 +854,21 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			switch cmd {
 			case "textbf":
 				arg := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineBold, Value: arg, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineBold, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "textit", "emph":
 				arg := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineItalic, Value: arg, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineItalic, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "alert":
 				arg := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineAlert, Value: arg, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineAlert, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "textcolor":
 				color := p.parseRawArgument()
 				text := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineColored, Color: color, Value: text, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineColored, Color: color, Value: text, Overlay: overlay, Size: currentFontSize})
 			case "footcite", "cite", "autocite", "textcite", "parencite",
 				"citeauthor", "citeyear", "citetitle", "footnotemark":
 				arg := p.parseRawArgument()
-				p.citationRef(arg) // record order
+				p.citationRef(arg)
 				elements = append(elements, InlineContent{Type: InlineCitation, Value: arg, Overlay: overlay})
 			case "footnote":
 				_ = p.parseRawArgument()
@@ -687,31 +877,33 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 			case "textrm", "textsf", "texttt", "textnormal", "text", "mbox",
 				"textsc", "textup":
 				arg := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Overlay: overlay})
-			// Font size commands: consume optional {} argument if present, output text
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "Huge", "huge", "LARGE", "Large", "large",
 				"normalsize", "small", "footnotesize", "scriptsize", "tiny":
-				// These don't take arguments; text follows
+				// Update current font size for subsequent tokens in this scope
+				if size, ok := fontSizeEmMap[cmd]; ok {
+					currentFontSize = size
+				}
 			case "\\":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: " "})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: " ", Size: currentFontSize})
 			// Special character escapes
 			case "&", "%", "#", "_", "^", "~", "{", "}":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: cmd})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: cmd, Size: currentFontSize})
 			case "ldots", "dots":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "…"})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "…", Size: currentFontSize})
 			case "textendash":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "–"})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "–", Size: currentFontSize})
 			case "textemdash":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "—"})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "—", Size: currentFontSize})
 			case "href":
 				url := p.parseRawArgument()
 				label := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineURL, Value: label, Color: url, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineURL, Value: label, Color: url, Overlay: overlay, Size: currentFontSize})
 			case "url", "nolinkurl":
 				link := p.parseRawArgument()
-				elements = append(elements, InlineContent{Type: InlineURL, Value: link, Color: link, Overlay: overlay})
+				elements = append(elements, InlineContent{Type: InlineURL, Value: link, Color: link, Overlay: overlay, Size: currentFontSize})
 			case "enquote", "textquote":
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201C"})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201C", Size: currentFontSize})
 				if p.curToken.Type == TokenOpenBrace {
 					p.nextToken()
 					inner := p.parseInlineTokens(func() bool {
@@ -722,7 +914,7 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 					}
 					elements = append(elements, inner...)
 				}
-				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201D"})
+				elements = append(elements, InlineContent{Type: InlinePureText, Value: "\u201D", Size: currentFontSize})
 			case "toprule", "midrule", "bottomrule", "hline":
 				// booktabs / standard table rules — silently skip
 			default:
@@ -730,7 +922,7 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 				if p.curToken.Type == TokenOpenBrace {
 					arg := p.parseRawArgument()
 					if strings.TrimSpace(arg) != "" {
-						elements = append(elements, InlineContent{Type: InlinePureText, Value: arg})
+						elements = append(elements, InlineContent{Type: InlinePureText, Value: arg, Size: currentFontSize})
 					}
 				}
 				// Otherwise: silently skip (no nextToken needed, already advanced past cmd)
@@ -740,6 +932,163 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 		}
 	}
 	return elements
+}
+
+// parseRawMathContent reads tokens from inside a math environment and
+// reconstructs the LaTeX source as a string. It stops (and consumes) \end{envName}.
+// The star variant \end{envName*} is also accepted.
+func (p *Parser) parseRawMathContent(envName string) string {
+	var sb strings.Builder
+	baseName := strings.TrimSuffix(envName, "*")
+	for p.curToken.Type != TokenEOF {
+		switch p.curToken.Type {
+		case TokenCommand:
+			if p.curToken.Value == "end" {
+				p.nextToken() // consume "end"
+				if p.curToken.Type == TokenOpenBrace {
+					p.nextToken() // consume "{"
+					var name strings.Builder
+					for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
+						name.WriteString(p.curToken.Value)
+						p.nextToken()
+					}
+					if p.curToken.Type == TokenCloseBrace {
+						p.nextToken()
+					}
+					n := name.String()
+					if n == envName || n == baseName {
+						return strings.TrimSpace(sb.String())
+					}
+					sb.WriteString(`\end{`)
+					sb.WriteString(n)
+					sb.WriteString(`}`)
+				}
+				continue
+			}
+			// "\" is the line-break command — its value is already "\\"
+			if strings.HasPrefix(p.curToken.Value, `\`) {
+				sb.WriteString(p.curToken.Value)
+			} else {
+				sb.WriteString(`\`)
+				sb.WriteString(p.curToken.Value)
+			}
+		case TokenText:
+			sb.WriteString(p.curToken.Value)
+		case TokenOpenBrace:
+			sb.WriteString(`{`)
+		case TokenCloseBrace:
+			sb.WriteString(`}`)
+		case TokenOpenBracket:
+			sb.WriteString(`[`)
+		case TokenCloseBracket:
+			sb.WriteString(`]`)
+		case TokenMath:
+			sb.WriteString(`$`)
+			sb.WriteString(p.curToken.Value)
+			sb.WriteString(`$`)
+		case TokenLessThan:
+			sb.WriteString(`<`)
+		case TokenGreaterThan:
+			sb.WriteString(`>`)
+		}
+		p.nextToken()
+	}
+	return strings.TrimSpace(sb.String())
+}
+
+// wrapMathEnv wraps parsed math content with the appropriate KaTeX delimiters.
+func wrapMathEnv(env, content string) string {
+	switch strings.TrimSuffix(env, "*") {
+	case "align", "eqnarray":
+		return `\begin{aligned}` + content + `\end{aligned}`
+	case "gather":
+		return `\begin{gathered}` + content + `\end{gathered}`
+	default:
+		return content
+	}
+}
+
+// parseTheoremBlock handles theorem-like environments: theorem, lemma, corollary,
+// proof, definition, example, remark, proposition. Reads an optional [custom title].
+func (p *Parser) parseTheoremBlock(envName string) (*Content, error) {
+	block := &Content{Type: ContentBlock, Children: []Content{}}
+	// Optional [custom subtitle/title override]
+	custom := p.parseOptionalArgString()
+	name := strings.ToUpper(envName[:1]) + envName[1:]
+	if custom != "" {
+		block.Title = name + " (" + strings.TrimSpace(custom) + ")"
+	} else {
+		block.Title = name
+	}
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand && p.curToken.Value == "end" {
+			arg := p.parseRawArgument()
+			if arg == envName {
+				break
+			}
+		}
+		content, err := p.parseContent()
+		if err != nil {
+			return nil, err
+		}
+		if content != nil {
+			block.Children = append(block.Children, *content)
+		}
+	}
+	return block, nil
+}
+
+// parseGenericWrapper parses wrapper environments (figure, table, center, etc.)
+// collecting child content. Returns the single child (if only one) or a bare block.
+func (p *Parser) parseGenericWrapper(envName string) (*Content, error) {
+	// Skip optional placement args like [h], [htbp]
+	_ = p.parseOptionalArgString()
+	baseEnv := strings.TrimSuffix(envName, "*")
+	wrapper := &Content{Type: ContentBlock, Children: []Content{}}
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand {
+			if p.curToken.Value == "end" {
+				arg := p.parseRawArgument()
+				if arg == envName || arg == baseEnv {
+					break
+				}
+				continue
+			}
+			// Skip decoration commands that have no visual equivalent
+			if p.curToken.Value == "centering" || p.curToken.Value == "label" ||
+				p.curToken.Value == "captionof" {
+				p.skipUnknownCommand()
+				continue
+			}
+			// \caption[short]{text} — render as a centered paragraph
+			if p.curToken.Value == "caption" {
+				captionText := p.parseRawArgument()
+				if captionText != "" {
+					wrapper.Children = append(wrapper.Children, Content{
+						Type:     ContentRichText,
+						Inline:   []InlineContent{{Type: InlinePureText, Value: captionText}},
+						Centered: true,
+					})
+				}
+				continue
+			}
+		}
+		content, err := p.parseContent()
+		if err != nil {
+			return nil, err
+		}
+		if content != nil {
+			wrapper.Children = append(wrapper.Children, *content)
+		}
+	}
+	if len(wrapper.Children) == 0 {
+		return nil, nil
+	}
+	if len(wrapper.Children) == 1 {
+		child := wrapper.Children[0]
+		return &child, nil
+	}
+	return wrapper, nil
 }
 
 func (p *Parser) parseQuote(envName string) (*Content, error) {
@@ -866,11 +1215,45 @@ func (p *Parser) parseOverlayEnv(envName string) (*Content, error) {
 	return container, nil
 }
 
+// tokenRaw reconstructs the approximate raw LaTeX source for a single token.
+// Used to recover lookahead tokens that were consumed before a raw-read.
+func tokenRaw(t Token) string {
+	switch t.Type {
+	case TokenCommand:
+		if t.Value == `\\` {
+			return `\\`
+		}
+		return `\` + t.Value
+	case TokenOpenBrace:
+		return "{"
+	case TokenCloseBrace:
+		return "}"
+	case TokenOpenBracket:
+		return "["
+	case TokenCloseBracket:
+		return "]"
+	case TokenLessThan:
+		return "<"
+	case TokenGreaterThan:
+		return ">"
+	case TokenMath:
+		return "$" + t.Value + "$"
+	case TokenEOF:
+		return ""
+	default:
+		return t.Value
+	}
+}
+
 func (p *Parser) parseVerbatim() (*Content, error) {
+	// parseRawArgument() advanced the lookahead twice after consuming {verbatim},
+	// so curToken and peekToken already hold the first two tokens of the verbatim
+	// body. Reconstruct their raw form and prepend it to the ReadRawUntil output.
+	prefix := tokenRaw(p.curToken) + tokenRaw(p.peekToken)
 	raw := p.l.ReadRawUntil(`\end{verbatim}`)
 	p.curToken = p.l.NextToken()
 	p.peekToken = p.l.NextToken()
-	return &Content{Type: ContentVerbatim, Title: strings.TrimLeft(raw, "\n\r")}, nil
+	return &Content{Type: ContentVerbatim, Title: strings.TrimLeft(prefix+raw, "\n\r")}, nil
 }
 
 func (p *Parser) parseLstlisting(envName string) (*Content, error) {
@@ -934,7 +1317,7 @@ func (p *Parser) parseTabular() (*Content, error) {
 			}
 			tableRow.Children = append(tableRow.Children, Content{
 				Type:   ContentRichText,
-				Inline: []InlineContent{{Type: InlinePureText, Value: cell}},
+				Inline: p.parseRawInline(cell),
 			})
 		}
 		if len(tableRow.Children) > 0 {
@@ -944,19 +1327,129 @@ func (p *Parser) parseTabular() (*Content, error) {
 	return table, nil
 }
 
+// parseRawInline parses a raw LaTeX string (e.g. a table cell) as inline
+// content by spinning up a temporary lexer. The caller's lexer state is
+// fully preserved.
+func (p *Parser) parseRawInline(raw string) []InlineContent {
+	if strings.TrimSpace(raw) == "" {
+		return []InlineContent{{Type: InlinePureText, Value: raw}}
+	}
+	// Save current lexer state.
+	savedL := p.l
+	savedCur := p.curToken
+	savedPeek := p.peekToken
+	savedStack := p.lexerStack
+
+	// Set up a temporary lexer for the raw string.
+	p.l = NewLexer(raw)
+	p.lexerStack = nil
+	p.curToken = p.l.NextToken()
+	p.peekToken = p.l.NextToken()
+
+	elements := p.parseInlineTokens(func() bool {
+		return p.curToken.Type == TokenEOF
+	})
+
+	// Restore lexer state.
+	p.l = savedL
+	p.curToken = savedCur
+	p.peekToken = savedPeek
+	p.lexerStack = savedStack
+
+	if len(elements) == 0 {
+		return []InlineContent{{Type: InlinePureText, Value: raw}}
+	}
+	return elements
+}
+
+// parseGraphicsPaths parses \graphicspath{{dir1/}{dir2/}} and stores the
+// directories in p.graphicPaths for use when resolving \includegraphics paths.
+func (p *Parser) parseGraphicsPaths() {
+	p.nextToken() // consume \graphicspath command token
+	if p.curToken.Type != TokenOpenBrace {
+		return
+	}
+	p.nextToken() // consume outer {
+	for p.curToken.Type == TokenOpenBrace {
+		p.nextToken() // consume inner {
+		var dir strings.Builder
+		for p.curToken.Type != TokenCloseBrace && p.curToken.Type != TokenEOF {
+			dir.WriteString(p.curToken.Value)
+			p.nextToken()
+		}
+		if p.curToken.Type == TokenCloseBrace {
+			p.nextToken() // consume inner }
+		}
+		d := strings.TrimSpace(filepath.FromSlash(dir.String()))
+		if d != "" && d != "." {
+			p.graphicPaths = append(p.graphicPaths, d)
+		}
+	}
+	if p.curToken.Type == TokenCloseBrace {
+		p.nextToken() // consume outer }
+	}
+}
+
+// resolveGraphicsPath resolves a raw image path by trying each graphicsPath
+// directory. Returns the resolved path relative to baseDir, or rawPath as-is.
+func (p *Parser) resolveGraphicsPath(rawPath string) string {
+	if rawPath == "" || p.baseDir == "" {
+		return rawPath
+	}
+	// Check as-is first
+	if _, err := os.Stat(filepath.Join(p.baseDir, rawPath)); err == nil {
+		return rawPath
+	}
+	// Try each graphicsPath prefix
+	for _, gp := range p.graphicPaths {
+		candidate := filepath.Join(gp, rawPath)
+		if _, err := os.Stat(filepath.Join(p.baseDir, candidate)); err == nil {
+			return filepath.ToSlash(candidate)
+		}
+	}
+	return rawPath
+}
+
 func (p *Parser) parseImage() *Content {
 	p.nextToken()
+	imgWidth := ""
 	if p.curToken.Type == TokenOpenBracket {
+		p.nextToken()
+		var opts strings.Builder
 		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+			opts.WriteString(p.curToken.Value)
 			p.nextToken()
 		}
 		p.nextToken()
+		// Extract width= value (e.g. width=0.8\linewidth, width=0.5\textwidth)
+		optsStr := opts.String()
+		if idx := strings.Index(optsStr, "width="); idx != -1 {
+			after := optsStr[idx+6:]
+			end := strings.IndexAny(after, ",]")
+			if end == -1 {
+				imgWidth = strings.TrimSpace(after)
+			} else {
+				imgWidth = strings.TrimSpace(after[:end])
+			}
+			// Convert \linewidth / \textwidth fractions to percentage
+			for _, unit := range []string{`\linewidth`, `\textwidth`, `\columnwidth`} {
+				if strings.HasSuffix(imgWidth, unit) {
+					frac := strings.TrimSuffix(imgWidth, unit)
+					frac = strings.TrimSpace(frac)
+					if f, err := strconv.ParseFloat(frac, 64); err == nil {
+						imgWidth = fmt.Sprintf("%.0f%%", f*100)
+					} else {
+						imgWidth = ""
+					}
+				}
+			}
+		}
 	}
-	path := ""
+	rawPath := ""
 	if p.curToken.Type == TokenOpenBrace {
-		path = p.parseRawArgument()
+		rawPath = p.parseRawArgument()
 	}
-	return &Content{Type: ContentImage, Path: path}
+	return &Content{Type: ContentImage, Path: p.resolveGraphicsPath(rawPath), Width: imgWidth}
 }
 
 func (p *Parser) parseSliceList(listType string) (*Content, error) {
@@ -965,39 +1458,132 @@ func (p *Parser) parseSliceList(listType string) (*Content, error) {
 		Ordered:  listType == "enumerate",
 		Children: []Content{},
 	}
-	if p.curToken.Type == TokenOpenBracket {
-		for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
-			p.nextToken()
-		}
-		p.nextToken()
+	// Skip optional [label/spacing] args
+	_ = p.parseOptionalArgString()
+
+	// Stop condition shared by all \item inline parsing
+	itemStop := func() bool {
+		return p.curToken.Type == TokenEOF ||
+			(p.curToken.Type == TokenCommand &&
+				(p.curToken.Value == "item" || p.curToken.Value == "end" ||
+					p.curToken.Value == "pause" || p.curToken.Value == "begin"))
 	}
+
 	for p.curToken.Type != TokenEOF {
 		if p.curToken.Type == TokenCommand {
 			if p.curToken.Value == "end" {
 				arg := p.parseRawArgument()
-				if arg == listType {
+				if arg == listType || arg == "itemize" || arg == "enumerate" {
 					break
 				}
+				continue
 			}
 			if p.curToken.Value == "item" {
 				p.nextToken()
 				itemOverlay := p.parseOverlaySpecification()
+				// Skip optional [custom bullet]
 				if p.curToken.Type == TokenOpenBracket {
 					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
 						p.nextToken()
 					}
 					p.nextToken()
 				}
-				inlineElements := p.parseInlineTokens(func() bool {
-					return p.curToken.Type == TokenEOF ||
-						(p.curToken.Type == TokenCommand &&
-							(p.curToken.Value == "item" || p.curToken.Value == "end" || p.curToken.Value == "pause"))
-				})
-				list.Children = append(list.Children, Content{
+				// Collect inline text
+				inlineElements := p.parseInlineTokens(itemStop)
+				item := Content{
 					Type:    ContentRichText,
 					Overlay: itemOverlay,
 					Inline:  inlineElements,
-				})
+				}
+				// Collect any nested structures (\begin{itemize}, \begin{enumerate}, etc.)
+				for p.curToken.Type == TokenCommand && p.curToken.Value == "begin" {
+					nested, err := p.parseContent()
+					if err != nil {
+						return nil, err
+					}
+					if nested != nil {
+						item.Children = append(item.Children, *nested)
+					}
+					// More inline text after the nested env
+					more := p.parseInlineTokens(itemStop)
+					item.Inline = append(item.Inline, more...)
+				}
+				list.Children = append(list.Children, item)
+				continue
+			}
+			if p.curToken.Value == "pause" {
+				p.nextToken()
+				continue
+			}
+		}
+		p.nextToken()
+	}
+	return list, nil
+}
+
+// parseDescriptionList handles \begin{description}...\end{description}.
+// Each \item[label] becomes a rich-text item with a bold label prefix.
+func (p *Parser) parseDescriptionList() (*Content, error) {
+	list := &Content{Type: ContentList, Ordered: false, Children: []Content{}}
+	// Skip optional args
+	_ = p.parseOptionalArgString()
+
+	itemStop := func() bool {
+		return p.curToken.Type == TokenEOF ||
+			(p.curToken.Type == TokenCommand &&
+				(p.curToken.Value == "item" || p.curToken.Value == "end" ||
+					p.curToken.Value == "pause" || p.curToken.Value == "begin"))
+	}
+
+	for p.curToken.Type != TokenEOF {
+		if p.curToken.Type == TokenCommand {
+			if p.curToken.Value == "end" {
+				arg := p.parseRawArgument()
+				if arg == "description" {
+					break
+				}
+				continue
+			}
+			if p.curToken.Value == "item" {
+				p.nextToken()
+				itemOverlay := p.parseOverlaySpecification()
+				// Read the mandatory [label] for description items
+				label := ""
+				if p.curToken.Type == TokenOpenBracket {
+					p.nextToken()
+					var lb strings.Builder
+					for p.curToken.Type != TokenCloseBracket && p.curToken.Type != TokenEOF {
+						lb.WriteString(p.curToken.Value)
+						p.nextToken()
+					}
+					if p.curToken.Type == TokenCloseBracket {
+						p.nextToken()
+					}
+					label = strings.TrimSpace(lb.String())
+				}
+				// Inline content follows the label
+				inlineElements := p.parseInlineTokens(itemStop)
+				// Prepend bold label
+				if label != "" {
+					labelEl := InlineContent{Type: InlineBold, Value: label + ":"}
+					inlineElements = append([]InlineContent{labelEl, {Type: InlinePureText, Value: " "}}, inlineElements...)
+				}
+				item := Content{
+					Type:    ContentRichText,
+					Overlay: itemOverlay,
+					Inline:  inlineElements,
+				}
+				// Nested structures
+				for p.curToken.Type == TokenCommand && p.curToken.Value == "begin" {
+					nested, err := p.parseContent()
+					if err != nil {
+						return nil, err
+					}
+					if nested != nil {
+						item.Children = append(item.Children, *nested)
+					}
+				}
+				list.Children = append(list.Children, item)
 				continue
 			}
 			if p.curToken.Value == "pause" {

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { ContentNode, InlineContent } from '../types';
 import 'katex/dist/katex.min.css';
-import ReactLatex from 'react-latex-next';
+import TeX from '@matejmazur/react-katex';
 import { usePresentationContext } from '../contexts/PresentationContext';
 
 interface RendererProps {
@@ -40,19 +40,29 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
   const renderInline = (inline: InlineContent[]) =>
     inline.map((el, i) => {
       if (el.overlay && !shouldShow(el.overlay)) return null;
+      const sizeStyle = el.size ? { fontSize: el.size } : {};
       switch (el.type) {
         case 'bold':
-          return <strong key={i} style={{ fontWeight: 800, color: cv('--slide-heading', '#0f172a') }}>{el.value}</strong>;
+          return <strong key={i} style={{ fontWeight: 800, color: cv('--slide-heading', '#0f172a'), ...sizeStyle }}>{el.value}</strong>;
         case 'italic':
-          return <em key={i} style={{ fontStyle: 'italic', color: MUTED() }}>{el.value}</em>;
+          return <em key={i} style={{ fontStyle: 'italic', color: MUTED(), ...sizeStyle }}>{el.value}</em>;
         case 'alert':
-          return <strong key={i} style={{ color: ACCENT(), fontWeight: 700 }}>{el.value}</strong>;
+          return <strong key={i} style={{ color: ACCENT(), fontWeight: 700, ...sizeStyle }}>{el.value}</strong>;
         case 'colored':
-          return <span key={i} style={{ color: el.color }}>{el.value}</span>;
-        case 'math':
-          return el.value.includes('\n') || el.value.length > 30
-            ? <div key={i} style={{ margin: '0.4em 0' }}><ReactLatex>{el.value}</ReactLatex></div>
-            : <span key={i} style={{ margin: '0 0.1em' }}><ReactLatex>{el.value}</ReactLatex></span>;
+          return <span key={i} style={{ color: el.color, ...sizeStyle }}>{el.value}</span>;
+        case 'math': {
+          const raw = el.value;
+          // Values starting with \begin (math environments), multiline, or
+          // long are rendered as display blocks; everything else is inline.
+          const isDisplay = raw.startsWith('\\begin') || raw.includes('\n') || raw.length > 40;
+          return isDisplay
+            ? <div key={i} style={{ margin: '0.4em 0', textAlign: 'center', ...sizeStyle }}>
+                <TeX math={raw} errorColor="#cc0000" />
+              </div>
+            : <span key={i} style={{ margin: '0 0.1em', display: 'inline-block', ...sizeStyle }}>
+                <TeX math={raw} errorColor="#cc0000" />
+              </span>;
+        }
         case 'citation': {
           const num = citationNumber(el.value);
           const entry = bibEntry(el.value);
@@ -73,20 +83,35 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           const href = el.color || el.value;
           return (
             <a key={i} href={href} target="_blank" rel="noreferrer noopener"
-              style={{ color: ACCENT(), textDecoration: 'underline', wordBreak: 'break-all', fontSize: '0.85em' }}>
+              style={{ color: ACCENT(), textDecoration: 'underline', wordBreak: 'break-all', fontSize: el.size || '0.85em' }}>
               {el.value}
             </a>
           );
         }
         default:
-          return <span key={i}>{el.value}</span>;
+          return <span key={i} style={sizeStyle}>{el.value}</span>;
       }
     });
 
   switch (node.type) {
     case 'richtext':
+      // Item may have both inline text AND nested children (e.g. nested list)
+      if (node.children && node.children.length > 0) {
+        return (
+          <div style={node.centered ? { textAlign: 'center' } : undefined}>
+            {node.inline && node.inline.length > 0 && (
+              <p style={{ fontSize: '1em', color: TEXT(), lineHeight: 1.65, margin: '0 0 0.3em' }}>
+                {renderInline(node.inline)}
+              </p>
+            )}
+            {node.children.map((child, i) => (
+              <SlideRenderer key={i} node={child} currentStep={currentStep} theme="" />
+            ))}
+          </div>
+        );
+      }
       return (
-        <p style={{ fontSize: '1em', color: TEXT(), lineHeight: 1.65, margin: '0 0 0.5em' }}>
+        <p style={{ fontSize: '1em', color: TEXT(), lineHeight: 1.65, margin: '0 0 0.5em', ...(node.centered ? { textAlign: 'center' } : {}) }}>
           {renderInline(node.inline || [])}
         </p>
       );
@@ -167,11 +192,18 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
 
     case 'image':
       return (
-        <div style={{ margin: '0.5em 0', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ margin: '0.5em 0', display: 'flex', justifyContent: node.centered ? 'center' : 'center' }}>
           <img
-            src={`/${node.path}`}
+            src={`/files/${node.path}`}
             alt="Slide"
-            style={{ maxWidth: '100%', maxHeight: '42em', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+            style={{
+              maxWidth: node.width || '100%',
+              width: node.width || undefined,
+              maxHeight: '42em',
+              objectFit: 'contain',
+              borderRadius: '8px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
           />
         </div>
       );
@@ -256,6 +288,9 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
 
     case 'spacer':
       return <div style={{ height: '1.5em' }} />;
+
+    case 'vfill':
+      return <div style={{ flex: 1, minHeight: '1em' }} />;
 
     case 'quote':
       return (

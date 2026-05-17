@@ -13,12 +13,13 @@ html, body, #root {
 
 /* --------------------------------------------------------
    SLIDE CANVAS
-   The .slide-canvas class is applied to the 1920×1080 root
-   of each theme frame. Setting font-size here means all
-   em-based sizes in SlideRenderer scale correctly.
+   The .slide-canvas class is applied to the root div of each
+   theme frame. font-size is driven by --slide-scale (set by
+   SlideCanvas from the actual canvas width) so all em-based
+   sizes in themes and SlideRenderer adapt automatically.
    -------------------------------------------------------- */
 .slide-canvas {
-  font-size: 26px;
+  font-size: calc(var(--slide-scale, 1) * 26px);
   line-height: 1.5;
   box-sizing: border-box;
 }

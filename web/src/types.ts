@@ -5,6 +5,7 @@ export interface InlineContent {
   value: string;
   color?: string;
   overlay?: string;
+  size?: string;
 }
 
 export type ContentType =
@@ -20,6 +21,7 @@ export type ContentType =
   | 'tablerow'
   | 'toc'
   | 'spacer'
+  | 'vfill'
   | 'quote'
   | 'bibliography';
 
@@ -33,6 +35,7 @@ export interface ContentNode {
   overlay?: string;
   children?: ContentNode[];
   ordered?: boolean;
+  centered?: boolean;
 }
 
 export interface Section {
@@ -75,6 +78,7 @@ export interface Frame {
 
 export interface PresentationAST {
   title: string;
+  subtitle?: string;
   author: string;
   institute?: string;
   date?: string;

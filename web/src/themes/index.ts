@@ -10,6 +10,7 @@ export interface ThemeFrameProps {
   slideIndex: number;
   totaslitexs: number;
   presentationTitle: string;
+  presentationSubtitle: string;
   presentationAuthor: string;
   presentationInstitute: string;
   presentationDate: string;

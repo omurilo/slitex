@@ -14,4 +14,7 @@ export default defineConfig({
     assetsDir: 'assets',
     emptyOutDir: true,
   },
+  optimizeDeps: {
+    include: ['react-katex', 'prop-types'],
+  },
 });

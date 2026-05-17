@@ -10,13 +10,15 @@ interface ProjectorProps {
   initiaslitex?: number;
 }
 
-/** Renders the slide at a fixed 1920×1080 canvas and scales to fit the container. */
+/** Largest 16:9 rectangle that fits the container — rendered at actual pixel size, no intermediate transform. */
+const SLIDE_ASPECT = 16 / 9;
+
 const SlideCanvas: React.FC<{
   slideIndex: number;
   children: React.ReactNode;
 }> = ({ slideIndex, children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [dims, setDims] = useState({ w: 0, h: 0 });
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -24,7 +26,11 @@ const SlideCanvas: React.FC<{
 
     const update = () => {
       const { width, height } = el.getBoundingClientRect();
-      setScale(Math.min(width / 1920, height / 1080));
+      if (!width) return;
+      // If height is 0 (e.g. aspect-ratio parent not propagating to h-full children),
+      // fall back to deriving height from width so dims.h is always non-zero.
+      const w = height > 0 ? Math.min(width, height * SLIDE_ASPECT) : width;
+      setDims({ w: Math.round(w), h: Math.round(w / SLIDE_ASPECT) });
     };
 
     update();
@@ -33,35 +39,36 @@ const SlideCanvas: React.FC<{
     return () => ro.disconnect();
   }, []);
 
-  const canvasW = Math.round(1920 * scale);
-  const canvasH = Math.round(1080 * scale);
+  // Scale relative to the 1920×1080 reference design used by themes.
+  // Passed as --slide-scale so font-size (and all em values) adapt to the actual canvas size.
+  const scale = dims.w > 0 ? dims.w / 1920 : 1;
+
+  if (dims.w === 0) {
+    return <div ref={containerRef} className="w-full h-full" style={{ background: '#000' }} />;
+  }
 
   return (
     <div
       ref={containerRef}
-      className="w-full h-full flex items-center justify-center overflow-hidden"
+      className="w-full h-full flex items-center justify-center"
       style={{ background: '#000' }}
     >
+      {/* Canvas sized to the largest 16:9 rect that fits the container. */}
       <div
         style={{
-          width: `${canvasW}px`,
-          height: `${canvasH}px`,
-          overflow: 'hidden',
+          width: `${dims.w}px`,
+          height: `${dims.h}px`,
           position: 'relative',
-        }}
+          overflow: 'hidden',
+          '--slide-scale': scale,
+        } as React.CSSProperties}
       >
+        {/* position:absolute + inset:0 ensures height:100% always resolves to
+            dims.h regardless of the parent's CSS context (flex item, aspect-ratio, etc.) */}
         <div
           key={slideIndex}
           className="slide-transition"
-          style={{
-            width: '1920px',
-            height: '1080px',
-            transformOrigin: 'top left',
-            transform: `scale(${scale})`,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-          }}
+          style={{ position: 'absolute', inset: 0 }}
         >
           {children}
         </div>
@@ -149,6 +156,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
   const ctxValue = usePresentationContextValue(
     ast.sections ?? [],
     ast.title,
+    ast.subtitle ?? '',
     ast.author,
     ast.institute ?? '',
     ast.date ?? '',
@@ -163,6 +171,7 @@ export const ViewProjector: React.FC<ProjectorProps> = ({ ast, initiaslitex = 0 
       slideIndex={currentSlide}
       totaslitexs={frames.length}
       presentationTitle={ast.title}
+      presentationSubtitle={ast.subtitle ?? ''}
       presentationAuthor={ast.author}
       presentationInstitute={ast.institute ?? ''}
       presentationDate={ast.date ?? ''}

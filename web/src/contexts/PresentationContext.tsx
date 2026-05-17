@@ -4,6 +4,7 @@ import type { Section, BibEntry, CitationRef } from '../types';
 export interface PresentationContextValue {
   sections: Section[];
   presentationTitle: string;
+  presentationSubtitle: string;
   presentationAuthor: string;
   presentationInstitute: string;
   presentationDate: string;
@@ -18,6 +19,7 @@ export interface PresentationContextValue {
 export const PresentationContext = createContext<PresentationContextValue>({
   sections: [],
   presentationTitle: '',
+  presentationSubtitle: '',
   presentationAuthor: '',
   presentationInstitute: '',
   presentationDate: '',
@@ -35,6 +37,7 @@ export function usePresentationContext() {
 export function usePresentationContextValue(
   sections: Section[],
   presentationTitle: string,
+  presentationSubtitle: string,
   presentationAuthor: string,
   presentationInstitute: string,
   presentationDate: string,
@@ -56,6 +59,7 @@ export function usePresentationContextValue(
   return useMemo(() => ({
     sections,
     presentationTitle,
+    presentationSubtitle,
     presentationAuthor,
     presentationInstitute,
     presentationDate,
@@ -63,6 +67,6 @@ export function usePresentationContextValue(
     citations,
     citationNumber: (key: string) => citMap.get(key) ?? 0,
     bibEntry: (key: string) => bibMap.get(key),
-  }), [sections, presentationTitle, presentationAuthor, presentationInstitute,
+  }), [sections, presentationTitle, presentationSubtitle, presentationAuthor, presentationInstitute,
        presentationDate, bibliography, citations, citMap, bibMap]);
 }

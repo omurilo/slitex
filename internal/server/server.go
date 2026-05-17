@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -146,12 +148,32 @@ func (s *DevServer) apiASTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	baseDir := filepath.Dir(s.targetFile)
-	lexer := compiler.NewLexer(string(content))
-	parser := compiler.NewParser(lexer, baseDir)
 
-	presentation, err := parser.ParsePresentation()
-	if err != nil {
-		http.Error(w, fmt.Sprintf(`{"error": "Erro de parsing: %v"}`, err), http.StatusBadRequest)
+	// Run the parser in a goroutine with a timeout to prevent hanging on
+	// malformed or unsupported LaTeX constructs.
+	type result struct {
+		pres *compiler.Presentation
+		err  error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		lexer := compiler.NewLexer(string(content))
+		parser := compiler.NewParser(lexer, baseDir)
+		pres, err := parser.ParsePresentation()
+		ch <- result{pres, err}
+	}()
+
+	const parseTimeout = 10 * time.Second
+	var presentation *compiler.Presentation
+	select {
+	case res := <-ch:
+		if res.err != nil {
+			http.Error(w, fmt.Sprintf(`{"error": "Erro de parsing: %v"}`, res.err), http.StatusBadRequest)
+			return
+		}
+		presentation = res.pres
+	case <-time.After(parseTimeout):
+		http.Error(w, `{"error": "Timeout: a geração da AST demorou mais que o esperado. Verifique se há ambientes LaTeX não fechados ou não suportados."}`, http.StatusBadRequest)
 		return
 	}
 
@@ -225,6 +247,37 @@ func (s *DevServer) watchFile() {
 	}
 }
 
+// themeHandler returns an http.Handler for external themes.
+// It first looks for the requested file in the <baseDir>/themes/ local folder
+// (next to the .tex file), and falls back to ./node_modules so that npm-installed
+// packages are still found.
+func (s *DevServer) themeHandler() http.Handler {
+	baseDir := filepath.Dir(s.targetFile)
+	localThemesDir := filepath.Join(baseDir, "themes")
+
+	localFS := http.FileServer(http.Dir(localThemesDir))
+	npmFS := http.FileServer(http.Dir("./node_modules"))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Clean the URL path so that path-traversal sequences are neutralised
+		// before we build the OS path (same logic http.FileServer uses internally).
+		cleanedURL := path.Clean("/" + r.URL.Path)
+		candidate := filepath.Join(localThemesDir, filepath.FromSlash(cleanedURL))
+
+		// Guard: resolved path must still live inside localThemesDir.
+		absDir, _ := filepath.Abs(localThemesDir)
+		absCandidate, _ := filepath.Abs(candidate)
+		if strings.HasPrefix(absCandidate, absDir+string(filepath.Separator)) {
+			if _, err := os.Stat(absCandidate); err == nil {
+				localFS.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		npmFS.ServeHTTP(w, r)
+	})
+}
+
 func (s *DevServer) Start(port string) error {
 	go s.watchFile()
 
@@ -233,7 +286,11 @@ func (s *DevServer) Start(port string) error {
 	mux.HandleFunc("/api/live", s.sseHandler)
 	mux.HandleFunc("/api/sync", s.syncHandler)
 
-	mux.Handle("/themes/external/", http.StripPrefix("/themes/external/", http.FileServer(http.Dir("./node_modules"))))
+	mux.Handle("/themes/external/", http.StripPrefix("/themes/external/", s.themeHandler()))
+
+	// Serve static assets (images etc.) from the .tex file's directory.
+	texDir := filepath.Dir(s.targetFile)
+	mux.Handle("/files/", http.StripPrefix("/files/", http.FileServer(http.Dir(texDir))))
 
 	reactUI := ui.GetFileSystem()
 	fileServer := http.FileServer(reactUI)

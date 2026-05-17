@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ThemeFrameProps } from './index';
+import { ContentScaler } from '../components/ContentScaler';
 
 const VARS = {
   '--slide-accent': '#104f55',
@@ -18,74 +19,99 @@ const TEAL_DARK = '#104f55';
 const TEAL_MID = '#32746d';
 const TEAL_LIGHT = '#4a9e99';
 
-const Dots: React.FC<{ total: number; current: number }> = ({ total, current }) => (
-  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-    {Array.from({ length: total }).map((_, i) => (
-      <div key={i} style={{ width: i === current ? '18px' : '7px', height: '7px', borderRadius: '4px', background: i === current ? '#ffffff' : 'rgba(255,255,255,0.4)', transition: 'all 0.3s ease' }} />
-    ))}
-  </div>
-);
-
-export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
-  frame, slideIndex, totaslitexs, presentationTitle, presentationAuthor, presentationInstitute, presentationDate, children,
-}) => {
-  const isTitleSlide = frame.titlePage || (!frame.title && !frame.subtitle);
-
-  if (isTitleSlide) {
+const SlideProgress: React.FC<{ total: number; current: number }> = ({ total, current }) => {
+  if (total > 25) {
+    const pct = ((current + 1) / total) * 100;
     return (
-      <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: `linear-gradient(135deg, ${TEAL_DARK} 0%, ${TEAL_MID} 100%)`, fontFamily: "Georgia, 'Times New Roman', serif", color: 'white' }}>
-        {/* Nav bar */}
-        <div style={{ padding: '20px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }}>
-          <span style={{ fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 500, letterSpacing: '0.05em', opacity: 0.9 }}>{presentationAuthor}</span>
-          <Dots total={Math.min(totaslitexs, 12)} current={slideIndex} />
-          <span style={{ fontSize: '14px', fontFamily: 'monospace', opacity: 0.7 }}>{slideIndex + 1} / {totaslitexs}</span>
-        </div>
-
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 120px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '64px', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.1, textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>
-            {presentationTitle}
-          </h1>
-          <div style={{ width: '80px', height: '2px', background: 'rgba(255,255,255,0.5)', margin: '24px auto' }} />
-          {presentationAuthor && (
-            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '22px', fontFamily: 'sans-serif', margin: '0 0 6px' }}>{presentationAuthor}</p>
-          )}
-          {presentationInstitute && (
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '18px', fontFamily: 'sans-serif', margin: '0 0 6px' }}>{presentationInstitute}</p>
-          )}
-          {presentationDate && (
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '16px', fontFamily: 'sans-serif', margin: 0 }}>{presentationDate}</p>
-          )}
-          <div style={{ marginTop: '18px', color: 'rgba(255,255,255,0.85)', fontSize: '22px', fontFamily: 'sans-serif' }}>{children}</div>
+      <div style={{ display: 'flex', alignItems: 'center', minWidth: '4.62em' }}>
+        <div style={{ width: '4.62em', height: '0.12em', background: 'rgba(255,255,255,0.2)', borderRadius: '0.08em' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: '#ffffff', borderRadius: '0.08em', transition: 'width 0.3s ease' }} />
         </div>
       </div>
     );
   }
+  const dotW = total > 16 ? '0.19em' : '0.27em';
+  const actW = total > 16 ? '0.38em' : '0.69em';
+  const dotH = total > 16 ? '0.19em' : '0.27em';
+  const gap  = total > 16 ? '0.15em' : '0.23em';
+  return (
+    <div style={{ display: 'flex', gap, alignItems: 'center', flexWrap: 'nowrap' }}>
+      {Array.from({ length: total }).map((_, i) => (
+        <div key={i} style={{
+          width: i === current ? actW : dotW,
+          height: dotH,
+          borderRadius: '0.15em',
+          background: i === current ? '#ffffff' : 'rgba(255,255,255,0.4)',
+          transition: 'all 0.3s ease',
+          flexShrink: 0,
+        }} />
+      ))}
+    </div>
+  );
+};
 
+export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
+  frame, slideIndex, totaslitexs, presentationTitle, presentationSubtitle, presentationAuthor, presentationInstitute, presentationDate, children,
+}) => {
   if (frame.plain) {
     return (
-      <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '26px', padding: '60px' }}>
+      <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', fontFamily: "Georgia, 'Times New Roman', serif", padding: '2.31em' }}>
         {children}
       </div>
     );
   }
 
+  const isTitleSlide = frame.titlePage;
+
+  if (isTitleSlide) {
+    return (
+      <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: `linear-gradient(135deg, ${TEAL_DARK} 0%, ${TEAL_MID} 100%)`, fontFamily: "Georgia, 'Times New Roman', serif", color: 'white' }}>
+        <div style={{ padding: '0.77em 2.31em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }}>
+          <span style={{ fontSize: '0.54em', fontFamily: 'sans-serif', fontWeight: 500, letterSpacing: '0.05em', opacity: 0.9 }}>{presentationAuthor}</span>
+          <SlideProgress total={totaslitexs} current={slideIndex} />
+          <span style={{ fontSize: '0.54em', fontFamily: 'monospace', opacity: 0.7 }}>{slideIndex + 1} / {totaslitexs}</span>
+        </div>
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2.31em 4.62em', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2.46em', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.1, textShadow: '0 2px 20px rgba(0,0,0,0.3)' }}>
+            {presentationTitle}
+          </h1>
+          {presentationSubtitle && (
+            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '1.08em', fontFamily: 'sans-serif', margin: '0.54em 0 0', fontStyle: 'italic' }}>{presentationSubtitle}</p>
+          )}
+          <div style={{ width: '3.08em', height: '0.08em', background: 'rgba(255,255,255,0.5)', margin: '0.92em auto' }} />
+          {presentationAuthor && (
+            <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.85em', fontFamily: 'sans-serif', margin: '0 0 0.23em' }}>{presentationAuthor}</p>
+          )}
+          {presentationInstitute && (
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.69em', fontFamily: 'sans-serif', margin: '0 0 0.23em', whiteSpace: 'pre-line' }}>{presentationInstitute}</p>
+          )}
+          {presentationDate && (
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62em', fontFamily: 'sans-serif', margin: 0 }}>{presentationDate}</p>
+          )}
+          <div style={{ marginTop: '0.69em', color: 'rgba(255,255,255,0.85)', fontSize: '0.85em', fontFamily: 'sans-serif' }}>{children}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', color: '#1a1a2e', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '26px' }}>
+    <div className="slide-canvas" style={{ ...VARS, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', color: '#1a1a2e', fontFamily: "Georgia, 'Times New Roman', serif" }}>
       {/* Top bar: dark teal with presentation meta */}
-      <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '16px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-        <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontFamily: 'sans-serif', fontWeight: 500 }}>{presentationTitle}</span>
-        <Dots total={Math.min(totaslitexs, 12)} current={slideIndex} />
-        <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px', fontFamily: 'sans-serif' }}>{presentationAuthor}</span>
+      <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '0.62em 2.31em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.54em', fontFamily: 'sans-serif', fontWeight: 500 }}>{presentationTitle}</span>
+        <SlideProgress total={totaslitexs} current={slideIndex} />
+        <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.5em', fontFamily: 'sans-serif' }}>{presentationAuthor}</span>
       </div>
 
       {/* Slide title band */}
       {frame.title && (
-        <div style={{ background: `linear-gradient(90deg, ${TEAL_MID}, ${TEAL_LIGHT})`, padding: '20px 60px', flexShrink: 0 }}>
+        <div style={{ background: `linear-gradient(90deg, ${TEAL_MID}, ${TEAL_LIGHT})`, padding: '0.77em 2.31em', flexShrink: 0 }}>
           <h2 style={{ fontSize: '1.5em', fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.1, textShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
             {frame.title}
           </h2>
           {frame.subtitle && (
-            <p style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.9)', margin: '6px 0 0', fontFamily: 'sans-serif', fontWeight: 400 }}>
+            <p style={{ fontSize: '0.75em', color: 'rgba(255,255,255,0.9)', margin: '0.23em 0 0', fontFamily: 'sans-serif', fontWeight: 400 }}>
               {frame.subtitle}
             </p>
           )}
@@ -93,12 +119,12 @@ export const ThemeMadridFrame: React.FC<ThemeFrameProps> = ({
       )}
 
       {/* Content */}
-      <div style={{ flex: 1, padding: '28px 60px', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '4px' }}>
+      <ContentScaler style={{ flex: 1, padding: '1.08em 2.31em' }}>
         {children}
-      </div>
+      </ContentScaler>
 
       {/* Footer */}
-      <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '12px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '12px', fontFamily: 'sans-serif', fontWeight: 500, flexShrink: 0 }}>
+      <div style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_MID})`, padding: '0.46em 2.31em', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'rgba(255,255,255,0.8)', fontSize: '0.46em', fontFamily: 'sans-serif', fontWeight: 500, flexShrink: 0 }}>
         <span>{presentationAuthor}</span>
         <span style={{ maxWidth: '50%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>{presentationTitle}</span>
         <span style={{ fontFamily: 'monospace' }}>{slideIndex + 1} / {totaslitexs}</span>
