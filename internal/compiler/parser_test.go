@@ -317,6 +317,47 @@ func TestParser_FrameTitleCommand(t *testing.T) {
 	}
 }
 
+func TestParser_FrameTitleWithTexttt(t *testing.T) {
+	// \texttt{\textbackslash pause} inside frame title must resolve to \pause,
+	// not stop at the inner } and expose raw token values.
+	pres, err := parseTeX(`\begin{frame}{Step-by-Step with \texttt{\textbackslash pause}}\end{frame}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `Step-by-Step with \pause`
+	if pres.Frames[0].Title != want {
+		t.Errorf("expected title %q, got %q", want, pres.Frames[0].Title)
+	}
+}
+
+func TestParser_FrameTitleWithTextSpecials(t *testing.T) {
+	// \texttt{\textbackslash only\textless step\textgreater\{...\}} must
+	// resolve the escapes and track nested braces correctly.
+	pres, err := parseTeX(`\begin{frame}{\texttt{\textbackslash only\textless step\textgreater\{...\}}}\end{frame}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `\only<step>{...}`
+	if pres.Frames[0].Title != want {
+		t.Errorf("expected title %q, got %q", want, pres.Frames[0].Title)
+	}
+}
+
+func TestParser_FrameTitleViaCmdWithTexttt(t *testing.T) {
+	// Same scenario but using \frametitle instead of the frame argument.
+	pres, err := parseTeX(`
+\begin{frame}
+\frametitle{Step-by-Step with \texttt{\textbackslash pause}}
+\end{frame}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `Step-by-Step with \pause`
+	if pres.Frames[0].Title != want {
+		t.Errorf("expected title %q, got %q", want, pres.Frames[0].Title)
+	}
+}
+
 func TestParser_TitlePageFrame(t *testing.T) {
 	pres, err := parseTeX(`
 \begin{frame}
@@ -529,6 +570,172 @@ func TestParser_Newtcblisting(t *testing.T) {
 	}
 	if info.lang != "python" {
 		t.Errorf("expected lang='python', got %q", info.lang)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Inline formatting
+// ---------------------------------------------------------------------------
+
+// firstInline returns the inline elements from the first richtext content node
+// of the first frame, to make inline-parsing assertions concise.
+func firstInline(t *testing.T, src string) []InlineContent {
+	t.Helper()
+	pres, err := parseTeX(src)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if len(pres.Frames) == 0 {
+		t.Fatal("no frames produced")
+	}
+	for _, c := range pres.Frames[0].Content {
+		if c.Type == ContentRichText && len(c.Inline) > 0 {
+			return c.Inline
+		}
+	}
+	t.Fatal("no richtext content with inline elements found")
+	return nil
+}
+
+func TestParser_InlineBold(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\textbf{hello}\end{frame}`)
+	if inline[0].Type != InlineBold || inline[0].Value != "hello" {
+		t.Errorf("expected bold 'hello', got type=%s value=%q", inline[0].Type, inline[0].Value)
+	}
+}
+
+func TestParser_InlineItalic(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\textit{world}\end{frame}`)
+	if inline[0].Type != InlineItalic || inline[0].Value != "world" {
+		t.Errorf("expected italic 'world', got type=%s value=%q", inline[0].Type, inline[0].Value)
+	}
+}
+
+func TestParser_InlineEmph(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\emph{emphasis}\end{frame}`)
+	if inline[0].Type != InlineItalic || inline[0].Value != "emphasis" {
+		t.Errorf("expected italic for \\emph, got type=%s value=%q", inline[0].Type, inline[0].Value)
+	}
+}
+
+func TestParser_InlineTexttt(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\texttt{slitex}\end{frame}`)
+	if inline[0].Type != InlineCode || inline[0].Value != "slitex" {
+		t.Errorf("expected code 'slitex', got type=%s value=%q", inline[0].Type, inline[0].Value)
+	}
+}
+
+func TestParser_InlineTextttBackslash(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\texttt{\textbackslash pause}\end{frame}`)
+	if inline[0].Type != InlineCode {
+		t.Fatalf("expected code type, got %s", inline[0].Type)
+	}
+	if inline[0].Value != `\pause` {
+		t.Errorf("expected '\\pause', got %q", inline[0].Value)
+	}
+}
+
+func TestParser_InlineTextttNestedBraces(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\texttt{\textbackslash usetheme\{Madrid\}}\end{frame}`)
+	if inline[0].Type != InlineCode {
+		t.Fatalf("expected code type, got %s", inline[0].Type)
+	}
+	if inline[0].Value != `\usetheme{Madrid}` {
+		t.Errorf("expected '\\usetheme{Madrid}', got %q", inline[0].Value)
+	}
+}
+
+func TestParser_InlineAlert(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\alert{danger}\end{frame}`)
+	if inline[0].Type != InlineAlert || inline[0].Value != "danger" {
+		t.Errorf("expected alert 'danger', got type=%s value=%q", inline[0].Type, inline[0].Value)
+	}
+}
+
+func TestParser_InlineTextcolor(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\textcolor{red}{colored}\end{frame}`)
+	if inline[0].Type != InlineColored {
+		t.Errorf("expected colored, got type=%s", inline[0].Type)
+	}
+	if inline[0].Value != "colored" {
+		t.Errorf("expected value 'colored', got %q", inline[0].Value)
+	}
+}
+
+func TestParser_InlineTextcolorNamedColor(t *testing.T) {
+	src := `
+\definecolor{myblue}{HTML}{1D4ED8}
+\begin{frame}{F}\textcolor{myblue}{blue text}\end{frame}
+`
+	inline := firstInline(t, src)
+	if inline[0].Type != InlineColored {
+		t.Errorf("expected colored, got type=%s", inline[0].Type)
+	}
+	if inline[0].Color != "#1d4ed8" {
+		t.Errorf("expected resolved color '#1d4ed8', got %q", inline[0].Color)
+	}
+}
+
+func TestParser_InlineURL(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\url{https://example.com}\end{frame}`)
+	if inline[0].Type != InlineURL {
+		t.Fatalf("expected url, got type=%s", inline[0].Type)
+	}
+	if inline[0].Value != "https://example.com" {
+		t.Errorf("expected url value 'https://example.com', got %q", inline[0].Value)
+	}
+}
+
+func TestParser_InlineHref(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\href{https://example.com}{Click here}\end{frame}`)
+	if inline[0].Type != InlineURL {
+		t.Fatalf("expected url, got type=%s", inline[0].Type)
+	}
+	if inline[0].Value != "Click here" {
+		t.Errorf("expected label 'Click here', got %q", inline[0].Value)
+	}
+	if inline[0].Color != "https://example.com" {
+		t.Errorf("expected href 'https://example.com', got %q", inline[0].Color)
+	}
+}
+
+func TestParser_InlineEnquote(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}\enquote{quoted}\end{frame}`)
+	combined := ""
+	for _, el := range inline {
+		combined += el.Value
+	}
+	if !strings.Contains(combined, "quoted") {
+		t.Errorf("expected 'quoted' in inline content, got %q", combined)
+	}
+	if !strings.Contains(combined, "\u201C") || !strings.Contains(combined, "\u201D") {
+		t.Errorf("expected curly quotes around enquoted text, got %q", combined)
+	}
+}
+
+func TestParser_InlineMixedFormatting(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}Run \texttt{slitex serve} to start.\end{frame}`)
+	foundCode := false
+	for _, el := range inline {
+		if el.Type == InlineCode && el.Value == "slitex serve" {
+			foundCode = true
+		}
+	}
+	if !foundCode {
+		t.Errorf("expected InlineCode 'slitex serve' among inline elements: %v", inline)
+	}
+}
+
+func TestParser_InlineInlineMath(t *testing.T) {
+	inline := firstInline(t, `\begin{frame}{F}Value $x^2$ here.\end{frame}`)
+	foundMath := false
+	for _, el := range inline {
+		if el.Type == InlineMathMode && strings.Contains(el.Value, "x^2") {
+			foundMath = true
+		}
+	}
+	if !foundMath {
+		t.Errorf("expected inline math containing 'x^2': %v", inline)
 	}
 }
 

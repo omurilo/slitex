@@ -1,0 +1,117 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+
+\usetheme{Metropolis}
+
+\title{Mathematics in slitex}
+\subtitle{Equations, macros, and operators}
+\author{Slitex}
+\date{\today}
+
+% Custom commands
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\inner}[2]{\langle #1,\, #2 \rangle}
+
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ── Inline math ───────────────────────────────────────────────────────────────
+
+\begin{frame}{Inline Math}
+  Use \texttt{\$...\$} for inline math:
+
+  \begin{itemize}
+    \item The energy $E = mc^2$ relates mass and energy.
+    \item The golden ratio $\varphi = \frac{1 + \sqrt{5}}{2} \approx 1.618$.
+    \item Euler's identity: $e^{i\pi} + 1 = 0$.
+    \item For $x \in \R^n$, the norm $\norm{x} = \sqrt{x^\top x}$.
+  \end{itemize}
+\end{frame}
+
+% ── Display equations ─────────────────────────────────────────────────────────
+
+\begin{frame}{Display Equations}
+  Numbered equation:
+  \begin{equation}
+    \mathcal{L}(\theta) = -\frac{1}{N} \sum_{i=1}^{N} \log p(y_i \mid x_i;\, \theta)
+  \end{equation}
+
+  Unnumbered equation:
+  \begin{equation*}
+    \hat{\theta} = \argmax_{\theta} \prod_{i=1}^{N} p(y_i \mid x_i;\, \theta)
+  \end{equation*}
+\end{frame}
+
+% ── Aligned equations ─────────────────────────────────────────────────────────
+
+\begin{frame}{Aligned Equations}
+  \begin{align}
+    (A + B)^\top  &= A^\top + B^\top       \\
+    (AB)^\top     &= B^\top A^\top         \\
+    (A^{-1})^\top &= (A^\top)^{-1}         \\
+    \tr(AB)       &= \tr(BA)
+  \end{align}
+\end{frame}
+
+% ── Custom macros ─────────────────────────────────────────────────────────────
+
+\begin{frame}{Custom Macros via \texttt{\textbackslash newcommand}}
+  \begin{itemize}
+    \item \texttt{\textbackslash R} $\to$ $\R$ \quad (reals)
+    \item \texttt{\textbackslash N} $\to$ $\N$ \quad (naturals)
+    \item \texttt{\textbackslash C} $\to$ $\C$ \quad (complex)
+    \item \texttt{\textbackslash norm\{x\}} $\to$ $\norm{x}$
+    \item \texttt{\textbackslash abs\{z\}} $\to$ $\abs{z}$
+    \item \texttt{\textbackslash inner\{u\}\{v\}} $\to$ $\inner{u}{v}$
+  \end{itemize}
+
+  \bigskip
+
+  Macros with arguments use \texttt{\#1}, \texttt{\#2}, etc.\ inside the definition.
+\end{frame}
+
+% ── Math operators ────────────────────────────────────────────────────────────
+
+\begin{frame}{Math Operators via \texttt{\textbackslash DeclareMathOperator}}
+  Operators render in upright font and respect spacing:
+
+  \begin{align*}
+    \tr(A)    &= \sum_i A_{ii}                                              \\
+    \rank(A)  &= \dim(\operatorname{im}(A))                                 \\
+    w^*       &= \argmin_{w \in \R^d} \; \mathcal{L}(w)                    \\
+    \hat{y}   &= \argmax_{c \in \mathcal{C}} \; p(c \mid x)
+  \end{align*}
+
+  \bigskip
+
+  The \texttt{*} variant (\texttt{\textbackslash DeclareMathOperator*}) places limits
+  below the operator in display mode.
+\end{frame}
+
+% ── Gather & multline ─────────────────────────────────────────────────────────
+
+\begin{frame}{Gather \& Multiline}
+  \texttt{gather} — centered, separate lines:
+  \begin{gather*}
+    f(x) = ax^2 + bx + c \\
+    g(x) = \sin(x) + \cos(x) \\
+    h(x) = e^{-x^2/2}
+  \end{gather*}
+\end{frame}
+
+\end{document}

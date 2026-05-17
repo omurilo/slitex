@@ -54,7 +54,7 @@ export const SlideRenderer: React.FC<RendererProps> = ({ node, currentStep }) =>
           const isDisplay = raw.startsWith('\\begin') || raw.includes('\n') || raw.length > 40;
           return isDisplay
             ? <div key={i} style={{ margin: '0.4em 0', textAlign: 'center', ...sizeStyle }}>
-                <TeX math={raw} settings={{ macros }} errorColor="#cc0000" />
+                <TeX block math={raw} settings={{ macros }} errorColor="#cc0000" />
               </div>
             : <span key={i} style={{ margin: '0 0.1em', display: 'inline-block', ...sizeStyle }}>
                 <TeX math={raw} settings={{ macros }} errorColor="#cc0000" />

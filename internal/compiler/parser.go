@@ -535,6 +535,21 @@ func (p *Parser) parseMetadataArg(lang string) string {
 				sb.WriteString(" \u0026 ")
 			case "&", "%", "#", "_":
 				sb.WriteString(cmd)
+			case "":
+				switch p.curToken.Type {
+				case TokenOpenBrace:
+					sb.WriteByte('{')
+					p.nextToken()
+				case TokenCloseBrace:
+					sb.WriteByte('}')
+					p.nextToken()
+				}
+			case "textbackslash":
+				sb.WriteString(`\`)
+			case "textless":
+				sb.WriteString("<")
+			case "textgreater":
+				sb.WriteString(">")
 			case "ldots", "dots":
 				sb.WriteString("…")
 			case "textendash":
@@ -662,10 +677,10 @@ func (p *Parser) parseFrame() (Frame, error) {
 	_ = p.parseOverlaySpecification()
 
 	if p.curToken.Type == TokenOpenBrace {
-		frame.Title = p.parseRawArgument()
+		frame.Title = p.parseMetadataArg("")
 	}
 	if p.curToken.Type == TokenOpenBrace {
-		frame.Subtitle = p.parseRawArgument()
+		frame.Subtitle = p.parseMetadataArg("")
 	}
 
 	frame.Content = []Content{}
@@ -689,11 +704,11 @@ frameLoop:
 				continue
 			case "frametitle":
 				p.nextToken()
-				frame.Title = p.parseRawArgument()
+				frame.Title = p.parseMetadataArg("")
 				continue
 			case "framesubtitle":
 				p.nextToken()
-				frame.Subtitle = p.parseRawArgument()
+				frame.Subtitle = p.parseMetadataArg("")
 				continue
 			case "note":
 				p.nextToken()
@@ -973,7 +988,7 @@ func (p *Parser) parseInlineTokens(stopCondition func() bool) []InlineContent {
 				p.citationRef("footnote")
 				elements = append(elements, InlineContent{Type: InlineCitation, Value: "footnote", Overlay: overlay})
 			case "texttt":
-				arg := strings.Trim(p.parseRawArgument(), "`")
+				arg := strings.Trim(unescapeLaTeXSpecials(p.readBraceGroupRaw()), "`")
 				elements = append(elements, InlineContent{Type: InlineCode, Value: arg, Overlay: overlay, Size: currentFontSize})
 			case "textrm", "textsf", "textnormal", "text", "mbox",
 				"textsc", "textup":
@@ -1063,6 +1078,12 @@ func (p *Parser) parseRawMathContent(envName string) string {
 			} else {
 				sb.WriteString(`\`)
 				sb.WriteString(p.curToken.Value)
+			}
+			// Add a space after letter-based commands so the lexer's whitespace
+			// stripping doesn't merge them with adjacent text.
+			// e.g. "\log p" → "\log p" not "\logp" (which KaTeX rejects).
+			if p.curToken.Value != "" && p.curToken.Value != `\\` {
+				sb.WriteByte(' ')
 			}
 		case TokenText:
 			sb.WriteString(p.curToken.Value)
@@ -1327,6 +1348,18 @@ func (p *Parser) readBraceGroupRaw() string {
 		}
 	}
 	return sb.String()
+}
+
+func unescapeLaTeXSpecials(s string) string {
+	s = strings.ReplaceAll(s, `\textbackslash`, `\`)
+	s = strings.ReplaceAll(s, `\{`, `{`)
+	s = strings.ReplaceAll(s, `\}`, `}`)
+	s = strings.ReplaceAll(s, `\$`, `$`)
+	s = strings.ReplaceAll(s, `\%`, `%`)
+	s = strings.ReplaceAll(s, `\#`, `#`)
+	s = strings.ReplaceAll(s, `\&`, `&`)
+	s = strings.ReplaceAll(s, `\_`, `_`)
+	return strings.TrimSpace(s)
 }
 
 func extractLstOption(opts, key string) string {

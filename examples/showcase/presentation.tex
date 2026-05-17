@@ -1,0 +1,498 @@
+\documentclass[aspectratio=169]{beamer}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[brazil]{babel}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage[autostyle]{csquotes}
+\usepackage[style=authoryear,backend=biber]{biblatex}
+\addbibresource{refs.bib}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+\tcbuselibrary{listings, skins}
+
+% ── Colors ────────────────────────────────────────────────────────────────────
+\definecolor{primary}{HTML}{1D4ED8}
+\definecolor{secondary}{HTML}{7C3AED}
+\definecolor{success}{HTML}{15803D}
+\colorlet{highlight}{secondary}
+
+% ── Custom macros ─────────────────────────────────────────────────────────────
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\DeclareMathOperator{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+
+% ── Custom code environment ───────────────────────────────────────────────────
+\lstdefinestyle{mystyle}{language=Python, basicstyle=\ttfamily\small}
+\newtcblisting{pycode}[1]{listing options={style=mystyle}, title=#1}
+
+% ── Theme & metadata ──────────────────────────────────────────────────────────
+\usetheme{Madrid}
+
+\title[Slitex Showcase]{Slitex — Feature Showcase}
+\subtitle{Every supported feature in one presentation}
+\author[Slitex]{Slitex Team}
+\institute[GitHub]{github.com/omurilo/slitex}
+\date[\today]{\today}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE PAGE
+% ==============================================================================
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ==============================================================================
+% TABLE OF CONTENTS
+% ==============================================================================
+
+\begin{frame}{Table of Contents}
+  \tableofcontents
+\end{frame}
+
+% ==============================================================================
+\section{Text \& Formatting}
+% ==============================================================================
+
+\begin{frame}{Text Formatting}
+  Regular text, \textbf{bold text}, \textit{italic text}, \texttt{monospace text}.
+
+  \alert{Alert text} is highlighted in the theme's accent color.
+
+  \textcolor{primary}{Blue text}, \textcolor{success}{green text}, \textcolor{secondary}{purple text}.
+
+  \medskip
+
+  Font sizes: {\tiny tiny} {\small small} normal {\large large} {\Large Large} {\LARGE LARGE} {\Huge Huge}
+
+  \medskip
+
+  Quoted text using csquotes: \enquote{This is properly quoted.}
+\end{frame}
+
+\begin{frame}{Plain Frame (no header/footer)}[plain]
+  This frame has no theme decorations — useful for full-screen images or title cards.
+\end{frame}
+
+% ==============================================================================
+\section{Lists}
+% ==============================================================================
+
+\begin{frame}{Unordered List}
+  \begin{itemize}
+    \item First top-level item
+    \item Second top-level item
+      \begin{itemize}
+        \item Nested item
+        \item Another nested item
+          \begin{itemize}
+            \item Deeply nested
+          \end{itemize}
+      \end{itemize}
+    \item Third top-level item
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Ordered List}
+  \begin{enumerate}
+    \item Install Go 1.23+
+    \item Clone the repository
+    \item Run \texttt{go install ./cmd/slitex}
+    \item Start the server: \texttt{slitex serve talk.tex}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Description List}
+  \begin{description}
+    \item[SSE] Server-Sent Events — used for live slide sync
+    \item[AST] Abstract Syntax Tree — the parsed representation of the \texttt{.tex} file
+    \item[KaTeX] A fast math rendering library for the browser
+  \end{description}
+\end{frame}
+
+% ==============================================================================
+\section{Blocks \& Theorems}
+% ==============================================================================
+
+\begin{frame}{Block Environments}
+  \begin{block}{Information}
+    Use \texttt{block} for neutral information.
+  \end{block}
+
+  \begin{alertblock}{Warning}
+    Use \texttt{alertblock} to draw attention to something important.
+  \end{alertblock}
+
+  \begin{exampleblock}{Example}
+    Use \texttt{exampleblock} for worked examples or demonstrations.
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}{Theorem-like Environments}
+  \begin{theorem}[Pythagorean Theorem]
+    In a right triangle: $a^2 + b^2 = c^2$.
+  \end{theorem}
+
+  \begin{definition}
+    A \textbf{prime} is a natural number $p > 1$ with no divisors other than $1$ and $p$.
+  \end{definition}
+
+  \begin{lemma}
+    Every integer $n > 1$ has a prime factor.
+  \end{lemma}
+
+  \begin{proof}
+    By strong induction on $n$. The details are left as an exercise.
+  \end{proof}
+\end{frame}
+
+\begin{frame}{More Theorem Environments}
+  \begin{corollary}
+    There are infinitely many prime numbers.
+  \end{corollary}
+
+  \begin{remark}
+    This result was already known to Euclid.
+  \end{remark}
+
+  \begin{example}
+    $2, 3, 5, 7, 11, 13, \ldots$ are all prime.
+  \end{example}
+
+  \begin{proposition}
+    Every even integer greater than 2 is the sum of two primes (Goldbach's conjecture).
+  \end{proposition}
+\end{frame}
+
+% ==============================================================================
+\section{Mathematics}
+% ==============================================================================
+
+\begin{frame}{Inline \& Display Math}
+  Inline math: The quadratic formula is $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$.
+
+  \bigskip
+
+  Display equation:
+  \begin{equation}
+    E = mc^2
+  \end{equation}
+
+  Unnumbered equation:
+  \begin{equation*}
+    \int_{-\infty}^{\infty} e^{-x^2} \, dx = \sqrt{\pi}
+  \end{equation*}
+\end{frame}
+
+\begin{frame}{Aligned Equations}
+  \begin{align}
+    \nabla \cdot \mathbf{E}  &= \frac{\rho}{\varepsilon_0}     \\
+    \nabla \cdot \mathbf{B}  &= 0                               \\
+    \nabla \times \mathbf{E} &= -\frac{\partial \mathbf{B}}{\partial t} \\
+    \nabla \times \mathbf{B} &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+  \end{align}
+\end{frame}
+
+\begin{frame}{Custom Math Macros}
+  Defined with \texttt{\textbackslash newcommand}:
+
+  \begin{itemize}
+    \item $f : \R \to \R$ — the reals
+    \item $n \in \N$ — natural numbers
+    \item $k \in \Z$ — integers
+    \item $\norm{x}$ — vector norm
+  \end{itemize}
+
+  \bigskip
+
+  Defined with \texttt{\textbackslash DeclareMathOperator}:
+  \[
+    \hat{\theta} = \argmax_{\theta \in \Theta} \; \ell(\theta)
+    \qquad
+    w^* = \argmin_{w} \; \mathcal{L}(w)
+  \]
+\end{frame}
+
+% ==============================================================================
+\section{Code}
+% ==============================================================================
+
+\begin{frame}[fragile]{Code Block — lstlisting}
+  \begin{lstlisting}[language=Go]
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, slitex!")
+}
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Code Block — JavaScript}
+  \begin{lstlisting}[language=JavaScript]
+const slides = await fetch('/api/ast').then(r => r.json());
+const source = new EventSource('/api/live');
+
+source.onmessage = ({ data }) => {
+  const { type, slide } = JSON.parse(data);
+  if (type === 'reload') location.reload();
+};
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Verbatim}
+  \begin{verbatim}
+$ slitex serve talk.tex
+Serving on http://localhost:8080
+  - /             → Landing (edit preview)
+  - /projector    → Projector (fullscreen)
+  - /presenter    → Presenter view
+  - /overview     → Slide grid
+  - /print        → Print / export
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Custom Code Environment (tcolorbox)}
+  \begin{pycode}{hello.py}
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+print(greet("slitex"))
+  \end{pycode}
+\end{frame}
+
+% ==============================================================================
+\section{Layout}
+% ==============================================================================
+
+\begin{frame}{Two Columns}
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \textbf{Left Column}
+      \begin{itemize}
+        \item Feature A
+        \item Feature B
+        \item Feature C
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Right Column}
+      \begin{itemize}
+        \item Feature D
+        \item Feature E
+        \item Feature F
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Column with Math \& Text}
+  \begin{columns}
+    \begin{column}{0.55\textwidth}
+      \textbf{Gradient Descent}
+
+      Update rule:
+      \[
+        \theta_{t+1} = \theta_t - \alpha \nabla_\theta \mathcal{L}(\theta_t)
+      \]
+      where $\alpha$ is the learning rate.
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \begin{block}{Parameters}
+        \begin{itemize}
+          \item $\alpha$: learning rate
+          \item $\theta$: model weights
+          \item $\mathcal{L}$: loss function
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Table}
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Algorithm    & Time     & Space  & Stable \\
+    \midrule
+    Bubble Sort  & $O(n^2)$ & $O(1)$ & Yes    \\
+    Merge Sort   & $O(n \log n)$ & $O(n)$ & Yes \\
+    Quick Sort   & $O(n \log n)$ & $O(\log n)$ & No \\
+    Heap Sort    & $O(n \log n)$ & $O(1)$ & No \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Spacers \& vfill}
+  Top content.
+
+  \vfill
+
+  This is pushed to the bottom by \texttt{\textbackslash vfill}.
+
+  \bigskip
+
+  \texttt{\textbackslash bigskip}, \texttt{\textbackslash medskip}, \texttt{\textbackslash smallskip} add vertical space.
+\end{frame}
+
+\begin{frame}{Quote}
+  \begin{quote}
+    Programs must be written for people to read, and only incidentally for machines to execute.
+  \end{quote}
+
+  \hfill --- Harold Abelson, \textit{SICP}
+
+  \bigskip
+
+  \begin{quotation}
+    The most important property of a program is whether it accomplishes the intention of its user.
+  \end{quotation}
+
+  \hfill --- C.A.R. Hoare
+\end{frame}
+
+\begin{frame}{Image}
+  \centering
+  \includegraphics[width=0.4\textwidth]{logo.png}
+
+  \medskip
+
+  Images are loaded via \texttt{\textbackslash includegraphics}.
+  Use \texttt{\textbackslash graphicspath} at the top to set search paths.
+\end{frame}
+
+% ==============================================================================
+\section{Animations \& Overlays}
+% ==============================================================================
+
+\begin{frame}{Step-by-step with \texttt{\textbackslash pause}}
+  This text is always visible.
+
+  \pause
+
+  This appears on step 2.
+
+  \pause
+
+  This appears on step 3.
+
+  \pause
+
+  And this on step 4.
+\end{frame}
+
+\begin{frame}{Overlay — \texttt{\textbackslash only}}
+  \only<1>{
+    \textbf{Step 1:} Define the problem.
+
+    Clearly state what you want to achieve.
+  }
+  \only<2>{
+    \textbf{Step 2:} Design the solution.
+
+    Break the problem into manageable parts.
+  }
+  \only<3>{
+    \textbf{Step 3:} Implement and test.
+
+    Write the code; verify against your requirements.
+  }
+\end{frame}
+
+\begin{frame}{Overlay — \texttt{\textbackslash uncover}}
+  \uncover<1->{Always visible from step 1.}
+
+  \uncover<2->{Revealed at step 2, stays visible.}
+
+  \uncover<3->{Revealed at step 3, stays visible.}
+
+  \uncover<4->{Revealed at step 4, stays visible.}
+\end{frame>
+
+\begin{frame}{Overlay --- List Items}
+  \begin{itemize}
+    \item<1-> First item (always visible)
+    \item<2-> Second item (from step 2)
+    \item<3-> Third item (from step 3)
+    \item<4-> Fourth item (from step 4)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Overlay --- Specific Steps}
+  \begin{itemize}
+    \item<1> Only on step 1
+    \item<2> Only on step 2
+    \item<1,3> On steps 1 and 3
+    \item<2-4> On steps 2 through 4
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{onlyenv / uncoverenv}
+  \begin{onlyenv}<1>
+    \begin{block}{Phase 1}
+      Introduction — shown only on step 1.
+    \end{block}
+  \end{onlyenv}
+
+  \begin{uncoverenv}<2->
+    \begin{exampleblock}{Phase 2}
+      Details — revealed from step 2 onward.
+    \end{exampleblock}
+  \end{uncoverenv}
+\end{frame}
+
+\begin{frame}{Speaker Notes}
+  This slide has speaker notes visible in the Presenter view.
+
+  Press \textbf{P} to open the Presenter view while projecting.
+
+  \note{Remind the audience that the Presenter view shows the current slide, next slide, notes, and a timer.}
+\end{frame}
+
+% ==============================================================================
+\section{References \& Colors}
+% ==============================================================================
+
+\begin{frame}{Colors}
+  Colors defined with \texttt{\textbackslash definecolor}:
+
+  \begin{itemize}
+    \item \textcolor{primary}{primary — HTML \#1D4ED8}
+    \item \textcolor{secondary}{secondary — HTML \#7C3AED}
+    \item \textcolor{success}{success — HTML \#15803D}
+    \item \textcolor{highlight}{highlight — colorlet alias for secondary}
+  \end{itemize}
+
+  \bigskip
+
+  RGB model also supported:
+
+  \definecolor{mygray}{rgb}{0.5,0.5,0.5}
+  \textcolor{mygray}{This is gray (rgb 0.5, 0.5, 0.5).}
+\end{frame}
+
+\begin{frame}{Links \& URLs}
+  Open the project: \href{https://github.com/omurilo/slitex}{slitex on GitHub}
+
+  \medskip
+
+  Bare URL: \url{https://github.com/omurilo/slitex}
+
+  \medskip
+
+  Quoted reference: \enquote{The quick brown fox jumps over the lazy dog.}
+\end{frame}
+
+\begin{frame}{Bibliography}
+  \printbibliography
+\end{frame}
+
+\end{document}

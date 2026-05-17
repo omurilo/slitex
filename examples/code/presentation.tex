@@ -1,0 +1,124 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage{listings}
+\usepackage{tcolorbox}
+\tcbuselibrary{listings, skins}
+
+% ── Custom code environments ──────────────────────────────────────────────────
+\lstdefinestyle{dracula}{
+  language=Python,
+  basicstyle=\ttfamily\small
+}
+
+\newtcblisting{pyblock}[1]{
+  listing options={style=dracula},
+  title=#1
+}
+
+\newtcblisting{jsblock}[1]{
+  listing options={language=JavaScript, basicstyle=\ttfamily\small},
+  title=#1
+}
+
+\usetheme{Berlin}
+
+\title{Code in slitex}
+\subtitle{lstlisting, verbatim, minted, and custom environments}
+\author{Slitex}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ── lstlisting ────────────────────────────────────────────────────────────────
+
+\begin{frame}[fragile]{lstlisting — Go}
+  \begin{lstlisting}[language=Go]
+func ParsePresentation(src string) (*Presentation, error) {
+    l := compiler.NewLexer(src)
+    p := compiler.NewParser(l, ".")
+    return p.ParsePresentation()
+}
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{lstlisting — Python}
+  \begin{lstlisting}[language=Python]
+import numpy as np
+
+def softmax(x: np.ndarray) -> np.ndarray:
+    e = np.exp(x - x.max())
+    return e / e.sum()
+
+probs = softmax(np.array([1.0, 2.0, 3.0]))
+print(probs)  # [0.090, 0.245, 0.665]
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{lstlisting --- JavaScript}
+  \begin{lstlisting}[language=JavaScript]
+const source = new EventSource('/api/live');
+
+source.addEventListener('message', ({ data }) => {
+  const { type, currentSlide } = JSON.parse(data);
+  if (type === 'reload') location.reload();
+  if (type === 'sync')   setSlide(currentSlide);
+});
+  \end{lstlisting}
+\end{frame}
+
+% ── Verbatim ──────────────────────────────────────────────────────────────────
+
+\begin{frame}[fragile]{Verbatim}
+  \begin{verbatim}
+$ slitex serve talk.tex
+
+Views:
+  http://localhost:8080/            ← Landing
+  http://localhost:8080/projector   ← Projector
+  http://localhost:8080/presenter   ← Presenter
+  http://localhost:8080/overview    ← Overview grid
+  http://localhost:8080/print       ← Print / PDF
+  \end{verbatim}
+\end{frame}
+
+% ── Custom tcolorbox environments ─────────────────────────────────────────────
+
+\begin{frame}[fragile]{Custom Environment — pyblock}
+  Defined with \texttt{\textbackslash newtcblisting}:
+
+  \begin{pyblock}{gradient\_descent.py}
+def gd(grad, x0, lr=0.01, steps=100):
+    x = x0
+    for _ in range(steps):
+        x = x - lr * grad(x)
+    return x
+  \end{pyblock}
+\end{frame}
+
+\begin{frame}[fragile]{Custom Environment — jsblock}
+  \begin{jsblock}{fetch\_slides.js}
+const ast = await fetch('/api/ast')
+  .then(res => res.json());
+
+console.log(`${ast.frames.length} slides loaded`);
+  \end{jsblock}
+\end{frame}
+
+% ── Inline code ───────────────────────────────────────────────────────────────
+
+\begin{frame}{Inline Code with \texttt{\textbackslash texttt}}
+  Use \texttt{\textbackslash texttt\{...\}} for inline code:
+
+  \begin{itemize}
+    \item Run \texttt{slitex serve talk.tex} to start the server.
+    \item The API is available at \texttt{/api/ast} (JSON) and \texttt{/api/live} (SSE).
+    \item Themes are set with \texttt{\textbackslash usetheme\{Madrid\}}.
+    \item Packages are declared with \texttt{\textbackslash usepackage\{xcolor\}}.
+  \end{itemize}
+\end{frame}
+
+\end{document}

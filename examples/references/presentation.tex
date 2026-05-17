@@ -1,0 +1,106 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage[brazil]{babel}
+\usepackage[style=authoryear,backend=biber]{biblatex}
+\addbibresource{refs.bib}
+\usepackage[autostyle]{csquotes}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\definecolor{linkblue}{HTML}{1D4ED8}
+\definecolor{citegreen}{HTML}{15803D}
+
+\usetheme{Copenhagen}
+
+\title{References \& Links}
+\subtitle{Bibliography, citations, URLs, and colors}
+\author{Slitex}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ── Colors ────────────────────────────────────────────────────────────────────
+
+\begin{frame}{Defining Colors}
+  Colors are defined with \texttt{\textbackslash definecolor} and referenced with \texttt{\textbackslash textcolor}:
+
+  \begin{itemize}
+    \item \textcolor{linkblue}{Blue — HTML \#1D4ED8}
+    \item \textcolor{citegreen}{Green — HTML \#15803D}
+  \end{itemize}
+
+  \bigskip
+
+  \texttt{rgb} model:
+  \definecolor{orange}{rgb}{1.0,0.5,0.0}
+  \textcolor{orange}{Orange via \texttt{rgb\{1.0,0.5,0.0\}}}
+
+  \bigskip
+
+  \texttt{\textbackslash colorlet} creates an alias:
+  \colorlet{mylink}{linkblue}
+  \textcolor{mylink}{mylink is an alias for linkblue}
+\end{frame}
+
+% ── Links ─────────────────────────────────────────────────────────────────────
+
+\begin{frame}{Links}
+  Clickable hyperlink:
+  \href{https://github.com/omurilo/slitex}{slitex on GitHub}
+
+  \bigskip
+
+  Bare URL (auto-linked):
+  \url{https://github.com/omurilo/slitex}
+
+  \bigskip
+
+  Quoted text via \texttt{csquotes}:
+  \enquote{The best tool is the one you actually use.}
+
+  \bigskip
+
+  Nested quotes:
+  \enquote{He said \enquote{hello} and left.}
+\end{frame}
+
+% ── Bibliography setup ────────────────────────────────────────────────────────
+
+\begin{frame}{Bibliography Setup}
+  Declare bibliography resources in the preamble:
+
+  \begin{verbatim}
+\usepackage[style=authoryear,backend=biber]{biblatex}
+\addbibresource{refs.bib}
+  \end{verbatim}
+
+  \bigskip
+
+  The \texttt{refs.bib} file uses standard BibTeX format:
+
+  \begin{verbatim}
+@article{knuth1984,
+  author  = {Knuth, Donald E.},
+  title   = {Literate Programming},
+  journal = {The Computer Journal},
+  year    = {1984},
+  volume  = {27},
+  number  = {2},
+  pages   = {97--111}
+}
+  \end{verbatim}
+\end{frame}
+
+% ── \printbibliography ────────────────────────────────────────────────────────
+
+\begin{frame}{Bibliography Slide}
+  Use \texttt{\textbackslash printbibliography} to render the bibliography:
+
+  \printbibliography
+\end{frame}
+
+\end{document}

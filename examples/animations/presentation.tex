@@ -1,0 +1,147 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{Warsaw}
+
+\title{Animations \& Overlays}
+\subtitle{pause, only, uncover, visible, item overlays}
+\author{Slitex}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% ── pause ─────────────────────────────────────────────────────────────────────
+
+\begin{frame}{Step-by-Step with \texttt{\textbackslash pause}}
+  Content before \texttt{\textbackslash pause} is always visible.
+
+  \pause
+
+  This paragraph appears on step 2.
+
+  \pause
+
+  \begin{block}{Tip}
+    Any content element — text, blocks, lists — can follow \texttt{\textbackslash pause}.
+  \end{block}
+
+  \pause
+
+  And this on step 4.
+\end{frame}
+
+% ── \only ─────────────────────────────────────────────────────────────────────
+
+\begin{frame}{\texttt{\textbackslash only\textless step\textgreater\{...\}}}
+  \only<1>{
+    \begin{block}{Step 1 — Problem}
+      We want to sort $n$ elements efficiently.
+    \end{block}
+  }
+  \only<2>{
+    \begin{alertblock}{Step 2 — Naive approach}
+      Bubble sort runs in $O(n^2)$ — too slow for large inputs.
+    \end{alertblock}
+  }
+  \only<3>{
+    \begin{exampleblock}{Step 3 — Better approach}
+      Merge sort achieves $O(n \log n)$ with a divide-and-conquer strategy.
+    \end{exampleblock}
+  }
+\end{frame}
+
+% ── \uncover ──────────────────────────────────────────────────────────────────
+
+\begin{frame}{\texttt{\textbackslash uncover\textless step-\textgreater\{...\}}}
+  Items are revealed one by one and \textbf{stay visible}:
+
+  \bigskip
+
+  \uncover<1->{\textbf{1.} Parse the \texttt{.tex} file into an AST.}
+
+  \medskip
+
+  \uncover<2->{\textbf{2.} Serve the AST as JSON via \texttt{/api/ast}.}
+
+  \medskip
+
+  \uncover<3->{\textbf{3.} Render the slides in the browser with React.}
+
+  \medskip
+
+  \uncover<4->{\textbf{4.} Push live updates via SSE at \texttt{/api/live}.}
+\end{frame}
+
+% ── List overlays ─────────────────────────────────────────────────────────────
+
+\begin{frame}{Overlay Specs on List Items}
+  \begin{itemize}
+    \item<1-> Always visible (from step 1)
+    \item<2-> Visible from step 2
+    \item<3-> Visible from step 3
+    \item<2-3> Only on steps 2 and 3
+    \item<4> Only on step 4
+  \end{itemize}
+\end{frame}
+
+% ── visibleenv / onlyenv / uncoverenv ─────────────────────────────────────────
+
+\begin{frame}{Block Overlays with \texttt{onlyenv} / \texttt{uncoverenv}}
+  \begin{onlyenv}<1>
+    \begin{block}{First}
+      This entire block only exists on step 1.
+    \end{block}
+  \end{onlyenv}
+
+  \begin{uncoverenv}<2->
+    \begin{block}{Second}
+      This block is revealed from step 2 and stays visible.
+    \end{block}
+  \end{uncoverenv}
+
+  \begin{visibleenv}<3>
+    \begin{alertblock}{Third}
+      This block is shown only on step 3 (space is reserved on other steps).
+    \end{alertblock}
+  \end{visibleenv}
+\end{frame}
+
+% ── columns + overlays ────────────────────────────────────────────────────────
+
+\begin{frame}{Columns + Overlays}
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \textbf{Left column} — always visible
+
+      \begin{itemize}
+        \item<1-> Item A
+        \item<2-> Item B
+        \item<3-> Item C
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \only<2->{
+        \begin{exampleblock}{Revealed at step 2}
+          Right column content appears when left column reaches Item B.
+        \end{exampleblock}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ── Speaker notes ─────────────────────────────────────────────────────────────
+
+\begin{frame}{Speaker Notes}
+  Slides can carry notes that only appear in the Presenter view.
+
+  \note{Tell the audience: press P to open Presenter view in a separate window. It shows the current slide, next slide preview, your notes, and elapsed time.}
+
+  \bigskip
+
+  Open \texttt{/presenter} in a new window to see the notes panel.
+\end{frame}
+
+\end{document}

@@ -1,0 +1,59 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{default}
+
+\title{Theme Gallery}
+\subtitle{All 12 built-in themes}
+\author{Slitex}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Available Themes}
+  Change the theme with \texttt{\textbackslash usetheme\{Name\}}.
+
+  \bigskip
+
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \item \textbf{default}
+        \item \textbf{metropolis}
+        \item \textbf{madrid}
+        \item \textbf{warsaw}
+        \item \textbf{frankfurt}
+        \item \textbf{copenhagen}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}
+        \item \textbf{berlin}
+        \item \textbf{boadilla}
+        \item \textbf{cambridgeus}
+        \item \textbf{darmstadt}
+        \item \textbf{annarbor}
+        \item \textbf{berkeley}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[plain]{Plain Frame}
+  A frame with the \texttt{[plain]} option has no header or footer decorations.
+
+  Useful for title cards or full-screen images.
+\end{frame}
+
+\begin{frame}{Frame with Subtitle}
+  \framesubtitle{This is the frame subtitle}
+
+  The \texttt{\textbackslash framesubtitle} command adds a subtitle line below the frame title.
+
+  You can also pass it as the second brace argument: \texttt{\textbackslash begin\{frame\}\{Title\}\{Subtitle\}}.
+\end{frame}
+
+\end{document}
