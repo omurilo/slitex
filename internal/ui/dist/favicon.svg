@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#4f46e5"/>
+  <!-- Slide frame -->
+  <rect x="4.5" y="8" width="23" height="15" rx="2" fill="white" fill-opacity="0.1"/>
+  <!-- Title bar -->
+  <rect x="8" y="11.5" width="12" height="3" rx="1.5" fill="white"/>
+  <!-- Content lines -->
+  <rect x="8" y="17" width="16" height="1.75" rx="0.875" fill="white" fill-opacity="0.7"/>
+  <rect x="8" y="20.25" width="11" height="1.75" rx="0.875" fill="white" fill-opacity="0.5"/>
+</svg>
