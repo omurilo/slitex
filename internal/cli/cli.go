@@ -111,8 +111,11 @@ func runServe(args []string) {
 	srv := server.NewDevServer(targetFile)
 
 	go func() {
-		time.Sleep(200 * time.Millisecond)
-		openBrowser("http://localhost:" + *port)
+		time.Sleep(300 * time.Millisecond)
+		time.Sleep(800 * time.Millisecond)
+		if srv.ClientCount() == 0 {
+			openBrowser("http://localhost:" + *port)
+		}
 	}()
 
 	if err := srv.Start(*port); err != nil {

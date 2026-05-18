@@ -66,6 +66,7 @@ func (s *DevServer) sseHandler(w http.ResponseWriter, r *http.Request) {
 	})
 	s.mu.Unlock()
 
+	fmt.Fprintf(w, "retry: 500\n\n")
 	fmt.Fprintf(w, "data: %s\n\n", stateJSON)
 	w.(http.Flusher).Flush()
 
@@ -289,6 +290,12 @@ func (s *DevServer) buildMux() *http.ServeMux {
 	})
 
 	return mux
+}
+
+func (s *DevServer) ClientCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.clients)
 }
 
 func (s *DevServer) Start(port string) error {
