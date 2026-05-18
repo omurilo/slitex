@@ -1,5 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
+declare global {
+  interface Window {
+    __SLITEX_STATIC__?: boolean;
+  }
+}
+
 interface SyncState {
   currentSlide: number;
   currentStep: number;
@@ -19,6 +25,8 @@ export function SyncProvider({ children, initialSlide = 0 }: { children: ReactNo
   const [state, setState] = useState<SyncState>({ currentSlide: initialSlide, currentStep: 1 });
 
   useEffect(() => {
+    if (window.__SLITEX_STATIC__) return;
+
     const source = new EventSource('/api/live');
 
     source.onmessage = (event) => {
@@ -40,11 +48,13 @@ export function SyncProvider({ children, initialSlide = 0 }: { children: ReactNo
 
   const updateState = useCallback((nextSlide: number, nextStep: number) => {
     setState({ currentSlide: nextSlide, currentStep: nextStep });
-    fetch('/api/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slide: nextSlide, step: nextStep }),
-    }).catch(() => {});
+    if (!window.__SLITEX_STATIC__) {
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slide: nextSlide, step: nextStep }),
+      }).catch(() => {});
+    }
   }, []);
 
   return (

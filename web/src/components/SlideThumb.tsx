@@ -44,6 +44,7 @@ export const SlideThumb: React.FC<SlideThumbProps> = ({ frame, ast, slideIndex }
     ast.date ?? '',
     ast.bibliography ?? [],
     ast.citations ?? [],
+    ast.macros ?? {},
   );
 
   return (

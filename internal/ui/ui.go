@@ -16,3 +16,9 @@ func GetFileSystem() http.FileSystem {
 	}
 	return http.FS(fsys)
 }
+
+// GetEmbedFS returns the raw embedded filesystem rooted at the module root
+// (i.e. paths start with "dist/..."). Useful for extracting files to disk.
+func GetEmbedFS() fs.FS {
+	return embedFS
+}

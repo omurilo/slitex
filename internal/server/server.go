@@ -264,9 +264,7 @@ func (s *DevServer) themeHandler() http.Handler {
 	})
 }
 
-func (s *DevServer) Start(port string) error {
-	go s.watchFile()
-
+func (s *DevServer) buildMux() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/ast", s.apiASTHandler)
 	mux.HandleFunc("/api/live", s.sseHandler)
@@ -290,6 +288,16 @@ func (s *DevServer) Start(port string) error {
 		fileServer.ServeHTTP(w, r)
 	})
 
+	return mux
+}
+
+func (s *DevServer) Start(port string) error {
+	go s.watchFile()
 	log.Printf("🚀 slitex V1 ativo em http://localhost:%s", port)
-	return http.ListenAndServe(":"+port, mux)
+	return http.ListenAndServe(":"+port, s.buildMux())
+}
+
+func (s *DevServer) StartWithServer(srv *http.Server) error {
+	srv.Handler = s.buildMux()
+	return srv.ListenAndServe()
 }

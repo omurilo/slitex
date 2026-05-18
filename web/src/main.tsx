@@ -128,9 +128,18 @@ function getInitiaslitex(): number {
   return slide ? Math.max(0, parseInt(slide, 10) - 1) : 0;
 }
 
+declare global {
+  interface Window {
+    __SLITEX_STATIC__?: boolean;
+    __SLITEX_AST__?: PresentationAST;
+  }
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 function App() {
-  const [ast, setAst] = useState<PresentationAST | null>(null);
+  const [ast, setAst] = useState<PresentationAST | null>(
+    () => (window.__SLITEX_STATIC__ && window.__SLITEX_AST__) ? window.__SLITEX_AST__ : null
+  );
   const [error, setError] = useState<string | null>(null);
   const path = window.location.pathname;
   const initiaslitex = getInitiaslitex();
@@ -139,6 +148,8 @@ function App() {
   usePackages(ast?.packages ?? []);
 
   useEffect(() => {
+    if (window.__SLITEX_STATIC__) return;
+
     const fetchAST = async () => {
       try {
         const res = await fetch('/api/ast');

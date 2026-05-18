@@ -2,3 +2,5 @@ internal/ui/dist
 slitex
 !cmd/slitex
 wiki/public
+examples/*/dist
+examples/*/*.pdf
