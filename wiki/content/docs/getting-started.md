@@ -33,6 +33,7 @@ essa AST e renderiza os slides com fidelidade visual ao Beamer.
 ## Próximos passos
 
 - [Instalação](/docs/installation) — compile e rode o slitex
+- [Comandos CLI](/docs/cli) — serve, build e print
 - [Escrevendo apresentações](/docs/writing-presentations) — sintaxe LaTeX suportada
 - [Views](/docs/views) — como usar cada modo de apresentação
 - [Temas](/docs/themes/overview) — escolha e personalize temas

@@ -30,7 +30,17 @@ No PDF generation. No LaTeX installation required. Just point it at your `.tex` 
 
 ## Installation
 
-### Pre-built binary (recommended)
+### go install
+
+If you have Go 1.23+ installed:
+
+```sh
+go install github.com/omurilo/slitex@latest
+```
+
+The binary will be placed in `$(go env GOPATH)/bin`.
+
+### Pre-built binary
 
 Download the latest release for your platform from the [Releases page](https://github.com/omurilo/slitex/releases/latest).
 
@@ -62,14 +72,21 @@ cd slitex
 cd web && npm ci && npm run build && cd ..
 
 # 2. Build the Go binary (embeds the UI)
-go build -o slitex ./cmd/slitex
+go build -o slitex .
 ```
 
 ## Usage
 
 ```sh
-slitex [flags] <presentation.tex>
+slitex <command> [flags] <presentation.tex>
 ```
+
+**Commands**
+| Command | Description |
+|---------|------------------------------------------|
+| serve   | Serve the presentation with a dev server |
+| build   | Build the presentation as static spa     |
+| print   | Print the presentation as PDF            |
 
 **Flags**
 
@@ -156,7 +173,7 @@ slitex supports a subset of Beamer commands. Key supported features:
 
 ```sh
 # Terminal 1 — Go dev server (uses Vite proxy, no embed needed)
-go run ./cmd/slitex -port 3000 path/to/talk.tex
+go run . serve -port 3000 path/to/talk.tex
 
 # Terminal 2 — Vite dev server (hot module reload)
 cd web && npm run dev
